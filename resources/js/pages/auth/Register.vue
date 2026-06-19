@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import AppButton from '@/components/AppButton.vue';
+import AppInput from '@/components/AppInput.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -32,9 +29,8 @@ defineOptions({
         class="flex flex-col gap-6"
     >
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="name">Name</Label>
-                <Input
+            <div>
+                <AppInput
                     id="name"
                     type="text"
                     required
@@ -43,13 +39,13 @@ defineOptions({
                     autocomplete="name"
                     name="name"
                     placeholder="Full name"
+                    label="Name"
+                    :error="errors.name"
                 />
-                <InputError :message="errors.name" />
             </div>
 
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input
+            <div>
+                <AppInput
                     id="email"
                     type="email"
                     required
@@ -57,12 +53,17 @@ defineOptions({
                     autocomplete="email"
                     name="email"
                     placeholder="email@example.com"
+                    label="Email address"
+                    :error="errors.email"
                 />
-                <InputError :message="errors.email" />
             </div>
 
             <div class="grid gap-2">
-                <Label for="password">Password</Label>
+                <label
+                    for="password"
+                    class="text-sm font-medium text-text-primary"
+                    >Password</label
+                >
                 <PasswordInput
                     id="password"
                     required
@@ -71,12 +72,16 @@ defineOptions({
                     name="password"
                     placeholder="Password"
                     :passwordrules="passwordRules"
+                    :error="errors.password"
                 />
-                <InputError :message="errors.password" />
             </div>
 
             <div class="grid gap-2">
-                <Label for="password_confirmation">Confirm password</Label>
+                <label
+                    for="password_confirmation"
+                    class="text-sm font-medium text-text-primary"
+                    >Confirm password</label
+                >
                 <PasswordInput
                     id="password_confirmation"
                     required
@@ -85,23 +90,22 @@ defineOptions({
                     name="password_confirmation"
                     placeholder="Confirm password"
                     :passwordrules="passwordRules"
+                    :error="errors.password_confirmation"
                 />
-                <InputError :message="errors.password_confirmation" />
             </div>
 
-            <Button
+            <AppButton
                 type="submit"
                 class="mt-2 w-full"
                 tabindex="5"
-                :disabled="processing"
+                :loading="processing"
                 data-test="register-user-button"
             >
-                <Spinner v-if="processing" />
                 Create account
-            </Button>
+            </AppButton>
         </div>
 
-        <div class="text-center text-sm text-muted-foreground">
+        <div class="text-center text-sm text-text-secondary">
             Already have an account?
             <TextLink
                 :href="login()"

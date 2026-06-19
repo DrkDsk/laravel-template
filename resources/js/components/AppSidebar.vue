@@ -1,19 +1,10 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import { LayoutGrid, LineChart, ShieldCheck, WalletCards } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
-import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
-import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-} from '@/components/ui/sidebar';
+import SidebarNavItem from '@/components/SidebarNavItem.vue';
+import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
 
@@ -25,42 +16,39 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
-                            <AppLogo />
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarHeader>
+    <aside
+        class="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-r border-on-primary/10 bg-sidebar-background px-4 py-5 text-on-primary lg:flex"
+    >
+        <Link
+            :href="dashboard()"
+            class="mb-8 flex items-center rounded-lg px-2 py-1"
+        >
+            <AppLogo />
+        </Link>
 
-        <SidebarContent>
-            <NavMain :items="mainNavItems" />
-        </SidebarContent>
+        <div
+            class="mb-4 px-3 text-xs font-semibold tracking-[0.18em] text-on-primary/70 uppercase"
+        >
+            Platform
+        </div>
+        <nav class="space-y-1" aria-label="Primary navigation">
+            <SidebarNavItem
+                v-for="item in mainNavItems"
+                :key="item.title"
+                :title="item.title"
+                :href="item.href"
+                :icon="item.icon"
+                :active="isCurrentOrParentUrl(item.href)"
+            />
+        </nav>
 
-        <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
+        <div class="mt-auto border-t border-on-primary/10 pt-4">
             <NavUser />
-        </SidebarFooter>
-    </Sidebar>
+        </div>
+    </aside>
     <slot />
 </template>

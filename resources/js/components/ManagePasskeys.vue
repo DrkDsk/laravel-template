@@ -2,7 +2,8 @@
 import { router } from '@inertiajs/vue3';
 import { KeyRound } from '@lucide/vue';
 import { destroy } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController';
-import Heading from '@/components/Heading.vue';
+import AppCard from '@/components/AppCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PasskeyItem from '@/components/PasskeyItem.vue';
 import PasskeyRegister from '@/components/PasskeyRegister.vue';
 import type { Passkey } from '@/types/auth';
@@ -30,14 +31,15 @@ const handleRegisterSuccess = () => {
 </script>
 
 <template>
-    <div v-if="canManagePasskeys" class="space-y-6">
-        <Heading
-            variant="small"
-            title="Passkeys"
-            description="Manage your passkeys for passwordless sign-in"
-        />
+    <AppCard v-if="canManagePasskeys" class="p-6">
+        <div class="mb-6">
+            <h2 class="text-lg font-semibold text-on-surface">Passkeys</h2>
+            <p class="mt-1 text-sm text-text-secondary">
+                Manage your passkeys for passwordless sign-in.
+            </p>
+        </div>
 
-        <div class="overflow-hidden rounded-lg border border-border">
+        <div class="overflow-hidden rounded-lg border border-border-default">
             <template v-if="passkeys.length">
                 <PasskeyItem
                     v-for="passkey in passkeys"
@@ -47,19 +49,15 @@ const handleRegisterSuccess = () => {
                 />
             </template>
 
-            <div v-else class="p-8 text-center">
-                <div
-                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted"
-                >
-                    <KeyRound class="h-7 w-7 text-muted-foreground" />
-                </div>
-                <p class="font-medium">No passkeys yet</p>
-                <p class="mt-1 text-sm text-muted-foreground">
-                    Add a passkey to sign in without a password
-                </p>
-            </div>
+            <EmptyState
+                v-else
+                title="No passkeys yet"
+                description="Add a passkey to sign in without a password."
+                :icon="KeyRound"
+                class="m-4"
+            />
         </div>
 
         <PasskeyRegister @success="handleRegisterSuccess" />
-    </div>
+    </AppCard>
 </template>

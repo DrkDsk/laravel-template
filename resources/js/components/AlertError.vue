@@ -1,30 +1,14 @@
 <script setup lang="ts">
-import { AlertCircle } from '@lucide/vue';
-import { computed } from 'vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import AppAlert from '@/components/AppAlert.vue';
 
-type Props = {
-    errors: string[];
+defineProps<{
     title?: string;
-};
-
-const props = withDefaults(defineProps<Props>(), {
-    title: 'Something went wrong.',
-});
-
-const uniqueErrors = computed(() => Array.from(new Set(props.errors)));
+    message?: string;
+}>();
 </script>
 
 <template>
-    <Alert variant="destructive">
-        <AlertCircle class="size-4" />
-        <AlertTitle>{{ title }}</AlertTitle>
-        <AlertDescription>
-            <ul class="list-inside list-disc text-sm">
-                <li v-for="(error, index) in uniqueErrors" :key="index">
-                    {{ error }}
-                </li>
-            </ul>
-        </AlertDescription>
-    </Alert>
+    <AppAlert v-if="message" variant="danger" :title="title || 'Error'">
+        {{ message }}
+    </AppAlert>
 </template>

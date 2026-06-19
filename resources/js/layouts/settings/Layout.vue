@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import Heading from '@/components/Heading.vue';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { MonitorCog, ShieldCheck, UserRound } from '@lucide/vue';
+import AppCard from '@/components/AppCard.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
@@ -14,14 +13,17 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: editProfile(),
+        icon: UserRound,
     },
     {
         title: 'Security',
         href: editSecurity(),
+        icon: ShieldCheck,
     },
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: MonitorCog,
     },
 ];
 
@@ -29,43 +31,37 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
 </script>
 
 <template>
-    <div class="px-4 py-6">
-        <Heading
-            title="Settings"
-            description="Manage your profile and account settings"
-        />
+    <div class="p-4 md:p-8">
+        <div class="mb-8">
+            <h1 class="text-2xl font-semibold text-text-primary">Settings</h1>
+            <p class="mt-2 text-sm text-text-secondary">
+                Manage account, authentication, and workspace preferences.
+            </p>
+        </div>
 
-        <div class="flex flex-col lg:flex-row lg:space-x-12">
-            <aside class="w-full max-w-xl lg:w-48">
-                <nav
-                    class="flex flex-col space-y-1 space-x-0"
-                    aria-label="Settings"
-                >
-                    <Button
+        <div class="grid gap-6 lg:grid-cols-[17rem_1fr]">
+            <AppCard class="h-fit p-3">
+                <nav class="grid gap-1" aria-label="Settings">
+                    <Link
                         v-for="item in sidebarNavItems"
                         :key="toUrl(item.href)"
-                        variant="ghost"
+                        :href="item.href"
                         :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
+                            'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition',
+                            isCurrentOrParentUrl(item.href)
+                                ? 'bg-primary text-on-primary'
+                                : 'text-text-secondary hover:bg-border-muted hover:text-text-primary',
                         ]"
-                        as-child
                     >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
-                            {{ item.title }}
-                        </Link>
-                    </Button>
+                        <component :is="item.icon" class="size-4" />
+                        {{ item.title }}
+                    </Link>
                 </nav>
-            </aside>
+            </AppCard>
 
-            <Separator class="my-6 lg:hidden" />
-
-            <div class="flex-1 md:max-w-2xl">
-                <section class="max-w-xl space-y-12">
-                    <slot />
-                </section>
-            </div>
+            <section class="max-w-3xl space-y-6">
+                <slot />
+            </section>
         </div>
     </div>
 </template>
