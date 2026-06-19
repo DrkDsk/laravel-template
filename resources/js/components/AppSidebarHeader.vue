@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 import { Menu, Search } from '@lucide/vue';
 import { computed } from 'vue';
 import AppButton from '@/components/AppButton.vue';
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
-import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 
-withDefaults(
+const props = withDefaults(
     defineProps<{
         breadcrumbs?: BreadcrumbItem[];
+        sidebarOpen?: boolean;
     }>(),
     {
         breadcrumbs: () => [],
+        sidebarOpen: false,
     },
 );
+
+const emit = defineEmits<{
+    toggleSidebar: [];
+}>();
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -45,19 +50,15 @@ const user = computed(() => page.props.auth.user);
                 variant="ghost"
                 size="sm"
                 class="lg:hidden"
-                aria-label="Open navigation"
+                aria-controls="app-sidebar"
+                :aria-expanded="props.sidebarOpen"
+                :aria-label="
+                    props.sidebarOpen ? 'Close navigation' : 'Open navigation'
+                "
+                @click="emit('toggleSidebar')"
             >
                 <Menu class="size-5" />
             </AppButton>
         </div>
-
-        <nav class="mt-4 flex gap-2 lg:hidden" aria-label="Mobile navigation">
-            <Link
-                :href="dashboard()"
-                class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-on-primary"
-            >
-                Dashboard
-            </Link>
-        </nav>
     </header>
 </template>

@@ -2,13 +2,17 @@
 import { Link } from '@inertiajs/vue3';
 import type { InertiaLinkProps } from '@inertiajs/vue3';
 import type { Component } from 'vue';
-import { cn, toUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const props = defineProps<{
     title: string;
     href: NonNullable<InertiaLinkProps['href']>;
     icon?: Component;
     active?: boolean;
+}>();
+
+const emit = defineEmits<{
+    navigate: [];
 }>();
 </script>
 
@@ -23,6 +27,7 @@ const props = defineProps<{
                     : 'text-on-primary/75 hover:bg-on-primary/10 hover:text-on-primary',
             )
         "
+        @click="emit('navigate')"
     >
         <component v-if="props.icon" :is="props.icon" class="size-4" />
         <span>{{ props.title }}</span>
