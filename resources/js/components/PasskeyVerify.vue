@@ -3,10 +3,8 @@ import type { UrlMethodPair } from '@inertiajs/core';
 import { router } from '@inertiajs/vue3';
 import { usePasskeyVerify } from '@laravel/passkeys/vue';
 import { KeyRound } from '@lucide/vue';
+import AppButton from '@/components/AppButton.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 
 type Props = {
     routes?: {
@@ -38,21 +36,20 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
 <template>
     <div v-if="isSupported">
         <div class="grid gap-2">
-            <Button
+            <AppButton
                 type="button"
-                variant="outline"
+                variant="ghost"
                 class="w-full"
                 @click="verify"
-                :disabled="isLoading"
+                :loading="isLoading"
             >
-                <Spinner v-if="isLoading" />
-                <KeyRound v-else class="h-4 w-4" />
+                <KeyRound v-if="!isLoading" class="h-4 w-4" />
                 {{
                     isLoading
                         ? (props.loadingLabel ?? 'Authenticating...')
                         : (props.label ?? 'Sign in with a passkey')
                 }}
-            </Button>
+            </AppButton>
 
             <div v-if="error" class="text-center">
                 <InputError :message="error" />
@@ -61,10 +58,10 @@ const { verify, isLoading, error, isSupported } = usePasskeyVerify({
 
         <div class="relative my-6">
             <div class="absolute inset-0 flex items-center">
-                <Separator class="w-full" />
+                <div class="w-full border-t border-border-muted" />
             </div>
             <div class="relative flex justify-center text-xs uppercase">
-                <span class="bg-background px-2 text-muted-foreground">
+                <span class="bg-surface px-2 text-text-secondary">
                     {{ props.separator ?? 'Or continue with email' }}
                 </span>
             </div>

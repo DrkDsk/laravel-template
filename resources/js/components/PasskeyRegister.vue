@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { usePasskeyRegister } from '@laravel/passkeys/vue';
 import { ref } from 'vue';
+import AppAlert from '@/components/AppAlert.vue';
+import AppButton from '@/components/AppButton.vue';
+import AppInput from '@/components/AppInput.vue';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 const emit = defineEmits<{
     success: [];
@@ -52,43 +52,42 @@ const handleCancel = () => {
 </script>
 
 <template>
-    <div v-if="!isSupported" class="text-sm text-muted-foreground">
+    <AppAlert v-if="!isSupported" variant="warning">
         Passkeys are not supported in this browser.
-    </div>
+    </AppAlert>
 
-    <Button v-else-if="!showForm" variant="outline" @click="showForm = true">
+    <AppButton v-else-if="!showForm" variant="ghost" @click="showForm = true">
         Add passkey
-    </Button>
+    </AppButton>
 
     <form
         v-else
         @submit="handleSubmit"
-        class="space-y-4 rounded-lg border border-border bg-muted/50 p-4"
+        class="space-y-4 rounded-lg border border-border-default bg-background p-4"
     >
-        <div class="grid gap-2">
-            <Label for="passkey-name">Passkey name</Label>
-            <Input
-                id="passkey-name"
-                type="text"
-                v-model="name"
-                placeholder="e.g., MacBook Pro, iPhone"
-                class="mt-1 block w-full border-foreground/20"
-                autofocus
-            />
-            <p class="text-xs text-muted-foreground">
-                A name helps you identify this passkey later.
-            </p>
-        </div>
+        <AppInput
+            id="passkey-name"
+            v-model="name"
+            type="text"
+            placeholder="e.g., MacBook Pro, iPhone"
+            label="Passkey name"
+            helper="A name helps you identify this passkey later."
+            autofocus
+        />
 
         <InputError v-if="error" :message="error" />
 
         <div class="flex gap-2">
-            <Button type="submit" :disabled="isLoading || !name.trim()">
-                {{ isLoading ? 'Registering...' : 'Register passkey' }}
-            </Button>
-            <Button type="button" variant="ghost" @click="handleCancel">
+            <AppButton
+                type="submit"
+                :loading="isLoading"
+                :disabled="!name.trim()"
+            >
+                Register passkey
+            </AppButton>
+            <AppButton type="button" variant="ghost" @click="handleCancel">
                 Cancel
-            </Button>
+            </AppButton>
         </div>
     </form>
 </template>

@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import InputError from '@/components/InputError.vue';
+import AppAlert from '@/components/AppAlert.vue';
+import AppButton from '@/components/AppButton.vue';
+import AppInput from '@/components/AppInput.vue';
 import PasskeyVerify from '@/components/PasskeyVerify.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
 import TextLink from '@/components/TextLink.vue';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
@@ -29,12 +26,9 @@ defineProps<{
 <template>
     <Head title="Log in" />
 
-    <div
-        v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
-    >
+    <AppAlert v-if="status" variant="success" class="mb-5">
         {{ status }}
-    </div>
+    </AppAlert>
 
     <PasskeyVerify />
 
@@ -45,9 +39,8 @@ defineProps<{
         class="flex flex-col gap-6"
     >
         <div class="grid gap-6">
-            <div class="grid gap-2">
-                <Label for="email">Email address</Label>
-                <Input
+            <div>
+                <AppInput
                     id="email"
                     type="email"
                     name="email"
@@ -56,13 +49,18 @@ defineProps<{
                     :tabindex="1"
                     autocomplete="email"
                     placeholder="email@example.com"
+                    label="Email address"
+                    :error="errors.email"
                 />
-                <InputError :message="errors.email" />
             </div>
 
             <div class="grid gap-2">
                 <div class="flex items-center justify-between">
-                    <Label for="password">Password</Label>
+                    <label
+                        for="password"
+                        class="text-sm font-medium text-text-primary"
+                        >Password</label
+                    >
                     <TextLink
                         v-if="canResetPassword"
                         :href="request()"
@@ -75,34 +73,42 @@ defineProps<{
                 <PasswordInput
                     id="password"
                     name="password"
+                    :error="errors.password"
                     required
                     :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
                 />
-                <InputError :message="errors.password" />
             </div>
 
             <div class="flex items-center justify-between">
-                <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
-                    <span>Remember me</span>
-                </Label>
+                <label
+                    for="remember"
+                    class="flex items-center gap-3 text-sm font-medium text-text-secondary"
+                >
+                    <input
+                        id="remember"
+                        name="remember"
+                        type="checkbox"
+                        :tabindex="3"
+                        class="size-4 rounded border-border-default text-primary"
+                    />
+                    <span>Remember this device</span>
+                </label>
             </div>
 
-            <Button
+            <AppButton
                 type="submit"
                 class="mt-4 w-full"
                 :tabindex="4"
-                :disabled="processing"
+                :loading="processing"
                 data-test="login-button"
             >
-                <Spinner v-if="processing" />
                 Log in
-            </Button>
+            </AppButton>
         </div>
 
-        <div class="text-center text-sm text-muted-foreground">
+        <div class="text-center text-sm text-text-secondary">
             Don't have an account?
             <TextLink :href="register()" :tabindex="5">Sign up</TextLink>
         </div>

@@ -1,38 +1,30 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import {
-    Breadcrumb,
-    BreadcrumbItem,
-    BreadcrumbLink,
-    BreadcrumbList,
-    BreadcrumbPage,
-    BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import { ChevronRight } from '@lucide/vue';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
-type Props = {
+defineProps<{
     breadcrumbs: BreadcrumbItemType[];
-};
-
-defineProps<Props>();
+}>();
 </script>
 
 <template>
-    <Breadcrumb>
-        <BreadcrumbList>
-            <template v-for="(item, index) in breadcrumbs" :key="index">
-                <BreadcrumbItem>
-                    <template v-if="index === breadcrumbs.length - 1">
-                        <BreadcrumbPage>{{ item.title }}</BreadcrumbPage>
-                    </template>
-                    <template v-else>
-                        <BreadcrumbLink as-child>
-                            <Link :href="item.href">{{ item.title }}</Link>
-                        </BreadcrumbLink>
-                    </template>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator v-if="index !== breadcrumbs.length - 1" />
-            </template>
-        </BreadcrumbList>
-    </Breadcrumb>
+    <nav aria-label="Breadcrumb" class="flex items-center gap-2 text-sm">
+        <template v-for="(item, index) in breadcrumbs" :key="index">
+            <Link
+                v-if="index !== breadcrumbs.length - 1"
+                :href="item.href"
+                class="font-medium text-text-secondary transition hover:text-text-primary"
+            >
+                {{ item.title }}
+            </Link>
+            <span v-else class="font-semibold text-text-primary">
+                {{ item.title }}
+            </span>
+            <ChevronRight
+                v-if="index !== breadcrumbs.length - 1"
+                class="size-4 text-text-secondary/70"
+            />
+        </template>
+    </nav>
 </template>
