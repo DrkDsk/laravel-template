@@ -5,28 +5,54 @@ import { computed, reactive, ref, nextTick } from 'vue';
 import AppButton from '@/components/AppButton.vue';
 import AppCard from '@/components/AppCard.vue';
 import AppInput from '@/components/AppInput.vue';
+import AppTextArea from '@/components/AppTextArea.vue';
 import type { Client } from '@/models/client';
 
 const props = defineProps<{
     clients: Client[];
     selectedClient: Client | null;
     filters: {
-        type: object;
         search: string;
     };
 }>();
 
-const stepErrors = reactive({
+type ClientStepField =
+    | 'client_id'
+    | 'name'
+    | 'last_name'
+    | 'phone'
+    | 'email'
+    | 'rfc'
+    | 'address'
+    | 'city'
+    | 'postal_code'
+    | 'notes';
+
+const stepErrors = reactive<Record<ClientStepField, string>>({
     client_id: '',
-    customer_name: '',
-    customer_phone: '',
-    issue: '',
+    name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    rfc: '',
+    address: '',
+    city: '',
+    postal_code: '',
+    notes: '',
 });
 
 const form = useForm({
     client_id: props.selectedClient?.id ?? null,
-    customer_name: '',
-    customer_phone: '',
+    client_mode: props.selectedClient ? 'existing' : 'new',
+    name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    rfc: '',
+    address: '',
+    city: '',
+    postal_code: '',
+    client_notes: '',
     notes: '',
     device_category_id: null,
     brand: '',
@@ -46,19 +72,23 @@ const normalizedSearch = computed(() =>
 
 const filteredClients = computed(() => {
     if (!normalizedSearch.value) {
-        return props.clients.slice(0, 6);
+        return clientResults.value.slice(0, 6);
     }
 
-    return props.clients
+    return clientResults.value
         .filter((client) => {
             const fullName = `${client.name ?? ''} ${client.last_name ?? ''}`
                 .trim()
                 .toLowerCase();
             const phone = `${client.phone ?? ''}`.toLowerCase();
+            const email = `${client.email ?? ''}`.toLowerCase();
+            const rfc = `${client.rfc ?? ''}`.toLowerCase();
 
             return (
                 fullName.includes(normalizedSearch.value) ||
-                phone.includes(normalizedSearch.value)
+                phone.includes(normalizedSearch.value) ||
+                email.includes(normalizedSearch.value) ||
+                rfc.includes(normalizedSearch.value)
             );
         })
         .slice(0, 6);
@@ -73,9 +103,14 @@ const steps = [
 
 const currentStep = ref(1);
 const clientSearch = ref(props.filters?.search ?? '');
+const clientResults = ref<Client[]>(props.clients ?? []);
+const selectedClient = ref<Client | null>(props.selectedClient);
 const showClientDropdown = ref(false);
 const manualCustomerMode = ref(false);
-const manualNameInputRef = ref(null);
+const manualNameInputRef = ref<{ focus: () => void } | null>(null);
+const resolvingClientStep = ref(false);
+let searchTimer: ReturnType<typeof window.setTimeout> | null = null;
+let searchRequestId = 0;
 
 const progressWidth = computed(
     () => `${((currentStep.value - 1) / (steps.length - 1)) * 100}%`,
@@ -85,46 +120,54 @@ const showManualCustomerFields = computed(
     () =>
         manualCustomerMode.value ||
         (!!clientSearch.value.trim() && !form.client_id) ||
-        !!form.customer_name ||
-        !!form.customer_phone,
+        !!form.name ||
+        !!form.last_name ||
+        !!form.phone ||
+        !!form.email ||
+        !!form.rfc ||
+        !!form.address ||
+        !!form.city ||
+        !!form.postal_code ||
+        !!form.client_notes,
 );
 
-const handleSearchInput = (value: string) => {
+const handleSearchInput = (event: Event) => {
+    const value = (event.target as HTMLInputElement).value;
+
     clientSearch.value = value;
     showClientDropdown.value = true;
+    manualCustomerMode.value = false;
 
     if (form.client_id) {
         form.client_id = null;
+        selectedClient.value = null;
     }
 
     stepErrors.client_id = '';
+    scheduleClientSearch();
 };
 
 const selectClient = (client: Client) => {
     form.client_id = client.id;
-    form.customer_name = '';
-    form.customer_phone = '';
+    form.client_mode = 'existing';
+    clearClientFields();
+    selectedClient.value = client;
     clientSearch.value =
         `${client.name ?? ''} ${client.last_name ?? ''}`.trim();
     showClientDropdown.value = false;
     manualCustomerMode.value = false;
-    stepErrors.client_id = '';
-    stepErrors.customer_name = '';
-    stepErrors.customer_phone = '';
-};
-
-const focusField = (target: HTMLInputElement | null) => {
-    target?.focus();
+    clearStepErrors();
 };
 
 const activateManualCustomer = async () => {
     form.client_id = null;
+    form.client_mode = 'new';
+    selectedClient.value = null;
     clientSearch.value = '';
     manualCustomerMode.value = true;
     showClientDropdown.value = false;
     await nextTick();
-    console.log(manualNameInputRef.value);
-    focusField(manualNameInputRef.value);
+    manualNameInputRef.value?.focus?.();
 };
 
 const hideDropdown = () => {
@@ -133,18 +176,156 @@ const hideDropdown = () => {
     }, 120);
 };
 
-const clearStepError = (field) => {
+const clearStepError = (field: ClientStepField) => {
     stepErrors[field] = '';
 };
 
-const handleManualInput = (field, value) => {
+const clearStepErrors = () => {
+    Object.keys(stepErrors).forEach((field) => {
+        stepErrors[field as ClientStepField] = '';
+    });
+};
+
+const clearClientFields = () => {
+    form.name = '';
+    form.last_name = '';
+    form.phone = '';
+    form.email = '';
+    form.rfc = '';
+    form.address = '';
+    form.city = '';
+    form.postal_code = '';
+    form.client_notes = '';
+};
+
+const handleManualInput = (
+    field: Exclude<ClientStepField, 'client_id' | 'notes'> | 'client_notes',
+    value: string | number | undefined,
+) => {
     form.client_id = null;
-    form[field] = value;
+    form.client_mode = 'new';
+    selectedClient.value = null;
+    form[field] = String(value ?? '');
     manualCustomerMode.value = true;
-    clearStepError(field);
+    clearStepError(field === 'client_notes' ? 'notes' : field);
     stepErrors.client_id = '';
 };
 
+const csrfToken = () =>
+    document
+        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
+        ?.getAttribute('content') ?? '';
+
+const scheduleClientSearch = () => {
+    if (searchTimer) {
+        window.clearTimeout(searchTimer);
+    }
+
+    searchTimer = window.setTimeout(() => {
+        void searchClients();
+    }, 250);
+};
+
+const searchClients = async () => {
+    const requestId = ++searchRequestId;
+    const params = new URLSearchParams({
+        search: clientSearch.value.trim(),
+    });
+
+    const response = await fetch(`/calculate/clients/search?${params}`, {
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok || requestId !== searchRequestId) {
+        return;
+    }
+
+    const data = (await response.json()) as { clients: Client[] };
+    clientResults.value = data.clients;
+};
+
+const applyServerErrors = (errors: Record<string, string[]>) => {
+    clearStepErrors();
+
+    Object.entries(errors).forEach(([field, messages]) => {
+        const target = field as ClientStepField;
+
+        if (target in stepErrors) {
+            stepErrors[target] = messages[0] ?? '';
+        }
+    });
+
+    if (Object.keys(errors).some((field) => field !== 'client_id')) {
+        manualCustomerMode.value = true;
+    }
+};
+
+const submitClientStep = async () => {
+    resolvingClientStep.value = true;
+    clearStepErrors();
+
+    const response = await fetch('/calculate/client-step', {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+        },
+        body: JSON.stringify({
+            client_mode: form.client_id ? 'existing' : 'new',
+            client_id: form.client_id,
+            name: form.name,
+            last_name: form.last_name,
+            phone: form.phone,
+            email: form.email,
+            rfc: form.rfc,
+            address: form.address,
+            city: form.city,
+            postal_code: form.postal_code,
+            notes: form.client_notes,
+        }),
+    });
+
+    resolvingClientStep.value = false;
+
+    if (response.status === 422) {
+        const data = (await response.json()) as {
+            errors: Record<string, string[]>;
+        };
+        applyServerErrors(data.errors);
+        return;
+    }
+
+    if (!response.ok) {
+        stepErrors.client_id =
+            'No pudimos guardar el cliente. Intenta nuevamente.';
+        return;
+    }
+
+    const data = (await response.json()) as { client: Client };
+    selectedClient.value = data.client;
+    clientResults.value = [data.client, ...clientResults.value].filter(
+        (client, index, clients) =>
+            clients.findIndex((item) => item.id === client.id) === index,
+    );
+    form.client_id = data.client.id;
+    form.client_mode = 'existing';
+    clientSearch.value =
+        `${data.client.name ?? ''} ${data.client.last_name ?? ''}`.trim();
+    manualCustomerMode.value = false;
+    currentStep.value = 2;
+};
+
+const goToNextStep = () => {
+    if (currentStep.value === 1) {
+        void submitClientStep();
+        return;
+    }
+
+    currentStep.value = Math.min(currentStep.value + 1, steps.length);
+};
 </script>
 
 <template>
@@ -355,7 +536,7 @@ const handleManualInput = (field, value) => {
                                             </button>
 
                                             <div
-                                                v-if="!clients.length"
+                                                v-if="!filteredClients.length"
                                                 class="px-4 py-4 text-sm text-slate-500 dark:text-slate-400"
                                             >
                                                 No encontramos coincidencias con
@@ -391,6 +572,12 @@ const handleManualInput = (field, value) => {
                                                         selectedClient.phone ||
                                                         'Sin telefono registrado'
                                                     }}
+                                                </p>
+                                                <p
+                                                    v-if="selectedClient.email"
+                                                    class="mt-1 text-sm text-slate-500 dark:text-slate-400"
+                                                >
+                                                    {{ selectedClient.email }}
                                                 </p>
                                             </div>
 
@@ -453,28 +640,97 @@ const handleManualInput = (field, value) => {
                             >
                                 <AppInput
                                     ref="manualNameInputRef"
-                                    :model-value="form.customer_name"
-                                    label="Nombre del cliente"
-                                    placeholder="Ej. Maria Lopez"
+                                    :model-value="form.name"
+                                    label="Nombre"
+                                    placeholder="Ej. Maria"
                                     :required="!form.client_id"
-                                    :error="stepErrors.customer_name"
+                                    :error="stepErrors.name"
                                     @update:model-value="
-                                        handleManualInput(
-                                            'customer_name',
-                                            $event,
-                                        )
+                                        handleManualInput('name', $event)
                                     "
                                 />
 
                                 <AppInput
-                                    :model-value="form.customer_phone"
-                                    label="Telefono de contacto"
+                                    :model-value="form.last_name"
+                                    label="Apellidos"
+                                    placeholder="Ej. Lopez Hernandez"
+                                    :error="stepErrors.last_name"
+                                    @update:model-value="
+                                        handleManualInput('last_name', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.phone"
+                                    label="Telefono"
                                     placeholder="Ej. 55 1234 5678"
-                                    :required="!form.client_id"
-                                    :error="stepErrors.customer_phone"
+                                    :error="stepErrors.phone"
+                                    @update:model-value="
+                                        handleManualInput('phone', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.email"
+                                    label="Correo electronico"
+                                    placeholder="cliente@correo.com"
+                                    type="email"
+                                    :error="stepErrors.email"
+                                    @update:model-value="
+                                        handleManualInput('email', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.rfc"
+                                    label="RFC"
+                                    placeholder="Ej. LOMM800101ABC"
+                                    :error="stepErrors.rfc"
+                                    @update:model-value="
+                                        handleManualInput('rfc', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.city"
+                                    label="Ciudad"
+                                    placeholder="Ej. Guadalajara"
+                                    :error="stepErrors.city"
+                                    @update:model-value="
+                                        handleManualInput('city', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.address"
+                                    label="Direccion"
+                                    placeholder="Calle, numero y colonia"
+                                    :error="stepErrors.address"
+                                    class="md:col-span-2"
+                                    @update:model-value="
+                                        handleManualInput('address', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.postal_code"
+                                    label="Codigo postal"
+                                    placeholder="Ej. 44100"
+                                    :error="stepErrors.postal_code"
+                                    @update:model-value="
+                                        handleManualInput('postal_code', $event)
+                                    "
+                                />
+
+                                <AppTextArea
+                                    :model-value="form.client_notes"
+                                    label="Notas del cliente"
+                                    placeholder="Datos adicionales del expediente"
+                                    :error="stepErrors.notes"
+                                    class="md:col-span-2"
                                     @update:model-value="
                                         handleManualInput(
-                                            'customer_phone',
+                                            'client_notes',
                                             $event,
                                         )
                                     "
@@ -499,6 +755,26 @@ const handleManualInput = (field, value) => {
                         </template>
                     </section>
                 </Transition>
+            </div>
+
+            <div
+                class="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-5 sm:px-8 dark:border-slate-800"
+            >
+                <AppButton
+                    variant="ghost"
+                    :disabled="currentStep === 1"
+                    @click="currentStep = Math.max(currentStep - 1, 1)"
+                >
+                    Anterior
+                </AppButton>
+
+                <AppButton
+                    :loading="resolvingClientStep"
+                    :disabled="resolvingClientStep"
+                    @click="goToNextStep"
+                >
+                    {{ currentStep === 4 ? 'Finalizar' : 'Continuar' }}
+                </AppButton>
             </div>
         </AppCard>
     </div>
