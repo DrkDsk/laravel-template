@@ -39,7 +39,7 @@ class CalculateController extends Controller
     }
 
     public function resolveClientStep(
-        StoreCalculateRequest             $request,
+        StoreCalculateRequest $request,
         ResolveCalculateClientStepUseCase $resolveClientStep,
     ): JsonResponse {
         $client = $resolveClientStep->execute($request->validated());
@@ -65,8 +65,5 @@ class CalculateController extends Controller
         ];
     }
 
-    public function store()
-    {
-
-    }
+    public function store() {}
 }
