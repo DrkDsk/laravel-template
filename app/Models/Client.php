@@ -11,10 +11,7 @@ class Client extends Model
         'last_name',
         'phone',
         'email',
-        'rfc',
-        'address',
-        'city',
-        'postal_code',
+        'curp',
         'notes',
     ];
 }
