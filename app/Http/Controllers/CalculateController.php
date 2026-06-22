@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Calculate\ResolveClientStepRequest;
+use App\Http\Requests\Calculate\StoreCalculateRequest;
 use App\Models\Client;
 use App\UseCases\Calculate\ResolveCalculateClientStepUseCase;
 use App\UseCases\Calculate\SearchClientsUseCase;
@@ -39,7 +39,7 @@ class CalculateController extends Controller
     }
 
     public function resolveClientStep(
-        ResolveClientStepRequest $request,
+        StoreCalculateRequest             $request,
         ResolveCalculateClientStepUseCase $resolveClientStep,
     ): JsonResponse {
         $client = $resolveClientStep->execute($request->validated());

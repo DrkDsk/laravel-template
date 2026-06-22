@@ -5,7 +5,7 @@ namespace App\Http\Requests\Calculate;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class ResolveClientStepRequest extends FormRequest
+class StoreCalculateRequest extends FormRequest
 {
     public function authorize(): bool
     {
