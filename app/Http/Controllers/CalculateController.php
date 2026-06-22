@@ -60,10 +60,7 @@ class CalculateController extends Controller
             'last_name' => $client->last_name,
             'phone' => $client->phone,
             'email' => $client->email,
-            'rfc' => $client->rfc,
-            'address' => $client->address,
-            'city' => $client->city,
-            'postal_code' => $client->postal_code,
+            'curp' => $client->curp,
             'notes' => $client->notes,
         ];
     }

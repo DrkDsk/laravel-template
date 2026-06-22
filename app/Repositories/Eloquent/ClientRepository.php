@@ -29,7 +29,7 @@ class ClientRepository extends BaseRepository implements ClientRepositoryInterfa
                         ->orWhere('last_name', 'like', "%{$normalizedTerm}%")
                         ->orWhere('phone', 'like', "%{$normalizedTerm}%")
                         ->orWhere('email', 'like', "%{$normalizedTerm}%")
-                        ->orWhere('rfc', 'like', "%{$normalizedTerm}%");
+                        ->orWhere('curp', 'like', "%{$normalizedTerm}%");
                 });
             })
             ->orderBy('name')

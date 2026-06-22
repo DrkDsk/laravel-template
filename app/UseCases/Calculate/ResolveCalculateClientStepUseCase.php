@@ -48,10 +48,7 @@ readonly class ResolveCalculateClientStepUseCase
                 'last_name',
                 'phone',
                 'email',
-                'rfc',
-                'address',
-                'city',
-                'postal_code',
+                'curp',
                 'notes',
             ])
             ->map(fn (mixed $value): mixed => $value === '' ? null : $value)

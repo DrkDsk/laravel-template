@@ -22,10 +22,7 @@ type ClientStepField =
     | 'last_name'
     | 'phone'
     | 'email'
-    | 'rfc'
-    | 'address'
-    | 'city'
-    | 'postal_code'
+    | 'curp'
     | 'notes';
 
 const stepErrors = reactive<Record<ClientStepField, string>>({
@@ -34,10 +31,7 @@ const stepErrors = reactive<Record<ClientStepField, string>>({
     last_name: '',
     phone: '',
     email: '',
-    rfc: '',
-    address: '',
-    city: '',
-    postal_code: '',
+    curp: '',
     notes: '',
 });
 
@@ -48,10 +42,7 @@ const form = useForm({
     last_name: '',
     phone: '',
     email: '',
-    rfc: '',
-    address: '',
-    city: '',
-    postal_code: '',
+    curp: '',
     client_notes: '',
     notes: '',
     device_category_id: null,
@@ -82,13 +73,13 @@ const filteredClients = computed(() => {
                 .toLowerCase();
             const phone = `${client.phone ?? ''}`.toLowerCase();
             const email = `${client.email ?? ''}`.toLowerCase();
-            const rfc = `${client.rfc ?? ''}`.toLowerCase();
+            const curp = `${client.curp ?? ''}`.toLowerCase();
 
             return (
                 fullName.includes(normalizedSearch.value) ||
                 phone.includes(normalizedSearch.value) ||
                 email.includes(normalizedSearch.value) ||
-                rfc.includes(normalizedSearch.value)
+                curp.includes(normalizedSearch.value)
             );
         })
         .slice(0, 6);
@@ -124,10 +115,7 @@ const showManualCustomerFields = computed(
         !!form.last_name ||
         !!form.phone ||
         !!form.email ||
-        !!form.rfc ||
-        !!form.address ||
-        !!form.city ||
-        !!form.postal_code ||
+        !!form.curp ||
         !!form.client_notes,
 );
 
@@ -191,10 +179,7 @@ const clearClientFields = () => {
     form.last_name = '';
     form.phone = '';
     form.email = '';
-    form.rfc = '';
-    form.address = '';
-    form.city = '';
-    form.postal_code = '';
+    form.curp = '';
     form.client_notes = '';
 };
 
@@ -280,10 +265,7 @@ const submitClientStep = async () => {
             last_name: form.last_name,
             phone: form.phone,
             email: form.email,
-            rfc: form.rfc,
-            address: form.address,
-            city: form.city,
-            postal_code: form.postal_code,
+            curp: form.curp,
             notes: form.client_notes,
         }),
     });
@@ -478,7 +460,7 @@ const goToNextStep = () => {
                                                 ref="searchInputRef"
                                                 :value="clientSearch"
                                                 type="text"
-                                                placeholder="Nombre, apellido o telefono"
+                                                placeholder="Nombre, apellido, telefono, correo o CURP"
                                                 class="focus:border-primary-500 focus:ring-primary-500/15 block w-full rounded-sm border bg-white py-2 pr-4 pl-10 text-sm text-slate-900 transition duration-200 ease-in-out placeholder:text-slate-400 focus:ring-2 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                                 :class="
                                                     stepErrors.client_id
@@ -682,43 +664,13 @@ const goToNextStep = () => {
                                 />
 
                                 <AppInput
-                                    :model-value="form.rfc"
-                                    label="RFC"
-                                    placeholder="Ej. LOMM800101ABC"
-                                    :error="stepErrors.rfc"
+                                    :model-value="form.curp"
+                                    label="CURP"
+                                    placeholder="Ej. LOMM800101HDFPRR09"
+                                    :required="!form.client_id"
+                                    :error="stepErrors.curp"
                                     @update:model-value="
-                                        handleManualInput('rfc', $event)
-                                    "
-                                />
-
-                                <AppInput
-                                    :model-value="form.city"
-                                    label="Ciudad"
-                                    placeholder="Ej. Guadalajara"
-                                    :error="stepErrors.city"
-                                    @update:model-value="
-                                        handleManualInput('city', $event)
-                                    "
-                                />
-
-                                <AppInput
-                                    :model-value="form.address"
-                                    label="Direccion"
-                                    placeholder="Calle, numero y colonia"
-                                    :error="stepErrors.address"
-                                    class="md:col-span-2"
-                                    @update:model-value="
-                                        handleManualInput('address', $event)
-                                    "
-                                />
-
-                                <AppInput
-                                    :model-value="form.postal_code"
-                                    label="Codigo postal"
-                                    placeholder="Ej. 44100"
-                                    :error="stepErrors.postal_code"
-                                    @update:model-value="
-                                        handleManualInput('postal_code', $event)
+                                        handleManualInput('curp', $event)
                                     "
                                 />
 

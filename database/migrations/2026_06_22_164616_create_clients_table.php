@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('last_name')->nullable();
             $table->string('phone')->nullable()->index();
             $table->string('email')->nullable()->index();
-            $table->string('curp')->nullable();
+            $table->string('curp');
             $table->text('notes')->nullable();
             $table->timestamps();
 

@@ -44,10 +44,12 @@ class ResolveClientStepRequest extends FormRequest
             'last_name' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'rfc' => ['nullable', 'string', 'max:255'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'postal_code' => ['nullable', 'string', 'max:255'],
+            'curp' => [
+                Rule::requiredIf($isNewClient),
+                'nullable',
+                'string',
+                'max:255',
+            ],
             'notes' => ['nullable', 'string'],
         ];
     }
@@ -63,10 +65,7 @@ class ResolveClientStepRequest extends FormRequest
             'last_name' => 'apellidos',
             'phone' => 'telefono',
             'email' => 'correo electronico',
-            'rfc' => 'RFC',
-            'address' => 'direccion',
-            'city' => 'ciudad',
-            'postal_code' => 'codigo postal',
+            'curp' => 'CURP',
             'notes' => 'notas',
         ];
     }
