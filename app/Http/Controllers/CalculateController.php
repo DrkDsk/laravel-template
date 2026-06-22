@@ -64,4 +64,9 @@ class CalculateController extends Controller
             'notes' => $client->notes,
         ];
     }
+
+    public function store()
+    {
+
+    }
 }

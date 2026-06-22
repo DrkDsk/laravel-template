@@ -12,6 +12,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('calculate.clients.search');
     Route::post('calculate/client-step', [CalculateController::class, 'resolveClientStep'])
         ->name('calculate.client-step.resolve');
+    Route::post('calculate/store', [CalculateController::class, 'store'])->name('calculate.store');
+
+    Route::prefix('calculate')->name('calculate.')->group(function () {
+
+    });
 });
 
 require __DIR__.'/settings.php';
