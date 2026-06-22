@@ -6,7 +6,7 @@ import NavUser from '@/components/NavUser.vue';
 import SidebarNavItem from '@/components/SidebarNavItem.vue';
 import { useCurrentUrl } from '@/composables/useCurrentUrl';
 import { cn } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { dashboard, calculate } from '@/routes';
 import type { NavItem } from '@/types';
 
 const props = withDefaults(
@@ -23,6 +23,11 @@ const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Formulario',
+        href: calculate(),
         icon: LayoutGrid,
     },
 ];
