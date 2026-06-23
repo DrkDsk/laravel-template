@@ -205,3 +205,31 @@ test('calculate store rejects regime end date that is not after birthdate', func
         ->assertRedirect(route('calculate'))
         ->assertSessionHasErrors('client.regime_end_date');
 });
+
+test('calculate store rejects regime end date that is not after eighteenth birthday', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('calculate'))
+        ->post(route('calculate.store'), [
+            'client_id' => null,
+            'client' => [
+                'name' => 'Alfredo',
+                'curp' => 'PAAA800101HDFLLL09',
+                'birthdate' => '1980-01-01',
+                'nss' => '12345678901',
+                'regime_end_date' => '1998-01-01',
+                'unemployment_assistance_discounted_weeks' => '0',
+            ],
+            'family_information' => [
+                'has_spouse' => '0',
+                'minor_or_student_children_count' => '0',
+                'parents_count' => '0',
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('calculate'))
+        ->assertSessionHasErrors('client.regime_end_date');
+});

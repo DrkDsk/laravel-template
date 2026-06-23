@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Calculate;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -45,6 +46,7 @@ class StoreCalculateRequest extends FormRequest
     public function rules(): array
     {
         $hasExistingClient = $this->filled('client_id');
+        $eighteenthBirthday = $this->eighteenthBirthday();
 
         return [
             'client_id' => [
@@ -102,6 +104,7 @@ class StoreCalculateRequest extends FormRequest
                 'nullable',
                 'date',
                 'after:client.birthdate',
+                ...($eighteenthBirthday !== null ? ['after:'.$eighteenthBirthday] : []),
             ],
             'client.unemployment_assistance_discounted_weeks' => [
                 Rule::excludeIf($hasExistingClient),
@@ -169,7 +172,22 @@ class StoreCalculateRequest extends FormRequest
             'client.phone.regex' => 'El telefono debe contener exactamente 10 digitos.',
             'client.nss.digits' => 'El NSS debe contener exactamente 11 digitos.',
             'client.birthdate.before_or_equal' => 'El cliente debe tener al menos 18 anos cumplidos.',
-            'client.regime_end_date.after' => 'La fecha de baja de regimen debe ser posterior a la fecha de nacimiento.',
+            'client.regime_end_date.after' => 'La fecha de baja de regimen debe ser posterior a la fecha en que el cliente cumplio 18 anos.',
         ];
+    }
+
+    private function eighteenthBirthday(): ?string
+    {
+        $birthdate = $this->input('client.birthdate');
+
+        if (! is_string($birthdate) || $birthdate === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($birthdate)->addYears(18)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

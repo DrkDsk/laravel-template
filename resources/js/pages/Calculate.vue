@@ -255,6 +255,33 @@ const isAfterDate = (value: string, comparisonValue: string) => {
     return date > comparisonDate;
 };
 
+const eighteenthBirthdayFor = (value: string) => {
+    if (!isValidDateValue(value)) {
+        return null;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+    date.setFullYear(date.getFullYear() + 18);
+
+    return date;
+};
+
+const isAfterEighteenthBirthday = (value: string, birthdateValue: string) => {
+    if (!isValidDateValue(value)) {
+        return false;
+    }
+
+    const eighteenthBirthday = eighteenthBirthdayFor(birthdateValue);
+
+    if (!eighteenthBirthday) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+
+    return date > eighteenthBirthday;
+};
+
 const isNonNegativeInteger = (value: string) =>
     /^\d+$/.test(value) && Number(value) >= 0;
 
@@ -347,7 +374,15 @@ const validateClientField = (
                         form.client.birthdate,
                     )
                   ? 'La fecha de baja de regimen debe ser posterior a la fecha de nacimiento.'
-                  : '';
+                  : form.client.regime_end_date &&
+                      form.client.birthdate &&
+                      isValidDateValue(form.client.birthdate) &&
+                      !isAfterEighteenthBirthday(
+                          form.client.regime_end_date,
+                          form.client.birthdate,
+                      )
+                    ? 'La fecha de baja de regimen debe ser posterior a la fecha en que el cliente cumplio 18 anos.'
+                    : '';
 
         return !stepErrors.regime_end_date;
     }
