@@ -226,16 +226,33 @@ const isValidDateValue = (value: string) => {
     return !Number.isNaN(date.getTime());
 };
 
-const isBeforeToday = (value: string) => {
+const eighteenYearsAgo = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setFullYear(date.getFullYear() - 18);
+
+    return date;
+};
+
+const isAtLeast18YearsOld = (value: string) => {
     if (!isValidDateValue(value)) {
         return false;
     }
 
-    const date = new Date(`${value}T00:00:00`);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const birthdate = new Date(`${value}T00:00:00`);
 
-    return date < today;
+    return birthdate <= eighteenYearsAgo();
+};
+
+const isAfterDate = (value: string, comparisonValue: string) => {
+    if (!isValidDateValue(value) || !isValidDateValue(comparisonValue)) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+    const comparisonDate = new Date(`${comparisonValue}T00:00:00`);
+
+    return date > comparisonDate;
 };
 
 const isNonNegativeInteger = (value: string) =>
@@ -292,9 +309,13 @@ const validateClientField = (
                 : ''
             : !isValidDateValue(form.client.birthdate)
               ? 'La fecha de nacimiento no es valida.'
-              : !isBeforeToday(form.client.birthdate)
-                ? 'La fecha de nacimiento debe ser anterior a hoy.'
+              : !isAtLeast18YearsOld(form.client.birthdate)
+                ? 'El cliente debe tener al menos 18 anos cumplidos.'
                 : '';
+
+        if (form.client.regime_end_date) {
+            validateClientField('regime_end_date');
+        }
 
         return !stepErrors.birthdate;
     }
@@ -318,7 +339,15 @@ const validateClientField = (
             form.client.regime_end_date &&
             !isValidDateValue(form.client.regime_end_date)
                 ? 'La fecha de baja de regimen no es valida.'
-                : '';
+                : form.client.regime_end_date &&
+                    form.client.birthdate &&
+                    isValidDateValue(form.client.birthdate) &&
+                    !isAfterDate(
+                        form.client.regime_end_date,
+                        form.client.birthdate,
+                    )
+                  ? 'La fecha de baja de regimen debe ser posterior a la fecha de nacimiento.'
+                  : '';
 
         return !stepErrors.regime_end_date;
     }

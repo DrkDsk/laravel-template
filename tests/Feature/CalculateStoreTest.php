@@ -150,3 +150,58 @@ test('calculate store rejects invalid client contact formats', function () {
             'family_information.parents_count',
         ]);
 });
+
+test('calculate store rejects a new client under 18 years old', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('calculate'))
+        ->post(route('calculate.store'), [
+            'client_id' => null,
+            'client' => [
+                'name' => 'Menor',
+                'curp' => 'PAAA800101HDFLLL09',
+                'birthdate' => now()->subYears(18)->addDay()->toDateString(),
+                'nss' => '12345678901',
+                'unemployment_assistance_discounted_weeks' => '0',
+            ],
+            'family_information' => [
+                'has_spouse' => '0',
+                'minor_or_student_children_count' => '0',
+                'parents_count' => '0',
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('calculate'))
+        ->assertSessionHasErrors('client.birthdate');
+});
+
+test('calculate store rejects regime end date that is not after birthdate', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('calculate'))
+        ->post(route('calculate.store'), [
+            'client_id' => null,
+            'client' => [
+                'name' => 'Alfredo',
+                'curp' => 'PAAA800101HDFLLL09',
+                'birthdate' => '1980-01-01',
+                'nss' => '12345678901',
+                'regime_end_date' => '1980-01-01',
+                'unemployment_assistance_discounted_weeks' => '0',
+            ],
+            'family_information' => [
+                'has_spouse' => '0',
+                'minor_or_student_children_count' => '0',
+                'parents_count' => '0',
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('calculate'))
+        ->assertSessionHasErrors('client.regime_end_date');
+});

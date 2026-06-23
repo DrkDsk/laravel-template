@@ -90,7 +90,7 @@ class StoreCalculateRequest extends FormRequest
                 Rule::excludeIf($hasExistingClient),
                 Rule::requiredIf(! $hasExistingClient),
                 'date',
-                'before:today',
+                'before_or_equal:'.now()->subYears(18)->toDateString(),
             ],
             'client.nss' => [
                 Rule::excludeIf($hasExistingClient),
@@ -101,6 +101,7 @@ class StoreCalculateRequest extends FormRequest
                 Rule::excludeIf($hasExistingClient),
                 'nullable',
                 'date',
+                'after:client.birthdate',
             ],
             'client.unemployment_assistance_discounted_weeks' => [
                 Rule::excludeIf($hasExistingClient),
@@ -167,6 +168,8 @@ class StoreCalculateRequest extends FormRequest
             'client.email.email' => 'El correo electronico debe tener un formato valido y un dominio existente.',
             'client.phone.regex' => 'El telefono debe contener exactamente 10 digitos.',
             'client.nss.digits' => 'El NSS debe contener exactamente 11 digitos.',
+            'client.birthdate.before_or_equal' => 'El cliente debe tener al menos 18 anos cumplidos.',
+            'client.regime_end_date.after' => 'La fecha de baja de regimen debe ser posterior a la fecha de nacimiento.',
         ];
     }
 }
