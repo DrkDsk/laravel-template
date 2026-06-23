@@ -21,6 +21,7 @@ return new class extends Migration
             $table->date('birthdate');
             $table->string('nss');
             $table->date('regime_end_date');
+            $table->unsignedInteger('unemployment_assistance_discounted_weeks');
             $table->text('notes')->nullable();
             $table->timestamps();
 
