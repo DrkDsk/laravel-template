@@ -12,45 +12,42 @@ class StoreCalculateRequest extends FormRequest
         return true;
     }
 
-    protected function prepareForValidation(): void
-    {
-        $this->merge([
-            'client_mode' => $this->input('client_mode', $this->filled('client_id') ? 'existing' : 'new'),
-        ]);
-    }
-
     /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        $isExistingClient = $this->input('client_mode') === 'existing';
-        $isNewClient = $this->input('client_mode') === 'new';
+        $hasExistingClient = $this->filled('client_id');
 
         return [
-            'client_mode' => ['required', Rule::in(['existing', 'new'])],
             'client_id' => [
-                Rule::requiredIf($isExistingClient),
                 'nullable',
                 'integer',
                 Rule::exists('clients', 'id'),
             ],
-            'name' => [
-                Rule::requiredIf($isNewClient),
+            'client' => [
+                Rule::excludeIf($hasExistingClient),
+                Rule::requiredIf(! $hasExistingClient),
+                'array',
+            ],
+            'client.name' => [
+                Rule::excludeIf($hasExistingClient),
+                Rule::requiredIf(! $hasExistingClient),
                 'nullable',
                 'string',
                 'max:255',
             ],
-            'last_name' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'curp' => [
-                Rule::requiredIf($isNewClient),
+            'client.last_name' => [Rule::excludeIf($hasExistingClient), 'nullable', 'string', 'max:255'],
+            'client.phone' => [Rule::excludeIf($hasExistingClient), 'nullable', 'string', 'max:255'],
+            'client.email' => [Rule::excludeIf($hasExistingClient), 'nullable', 'email', 'max:255'],
+            'client.curp' => [
+                Rule::excludeIf($hasExistingClient),
+                Rule::requiredIf(! $hasExistingClient),
                 'nullable',
                 'string',
                 'max:255',
             ],
-            'notes' => ['nullable', 'string'],
+            'client.notes' => [Rule::excludeIf($hasExistingClient), 'nullable', 'string'],
         ];
     }
 
@@ -61,12 +58,12 @@ class StoreCalculateRequest extends FormRequest
     {
         return [
             'client_id' => 'cliente',
-            'name' => 'nombre',
-            'last_name' => 'apellidos',
-            'phone' => 'telefono',
-            'email' => 'correo electronico',
-            'curp' => 'CURP',
-            'notes' => 'notas',
+            'client.name' => 'nombre',
+            'client.last_name' => 'apellidos',
+            'client.phone' => 'telefono',
+            'client.email' => 'correo electronico',
+            'client.curp' => 'CURP',
+            'client.notes' => 'notas',
         ];
     }
 }

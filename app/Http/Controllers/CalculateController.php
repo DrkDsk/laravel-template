@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Calculate\StoreCalculateRequest;
 use App\Models\Client;
-use App\UseCases\Calculate\ResolveCalculateClientStepUseCase;
 use App\UseCases\Calculate\SearchClientsUseCase;
+use App\UseCases\Calculate\StoreCalculateUseCase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class CalculateController extends Controller
 {
@@ -32,21 +34,20 @@ class CalculateController extends Controller
 
         return response()->json([
             'clients' => $searchClients
-                ->execute((string) ($validated['search'] ?? ''), 10)
+                ->execute((string) ($validated['search'] ?? ''))
                 ->map(fn (Client $client): array => $this->serializeClient($client))
                 ->values(),
         ]);
     }
 
-    public function resolveClientStep(
-        StoreCalculateRequest $request,
-        ResolveCalculateClientStepUseCase $resolveClientStep,
-    ): JsonResponse {
-        $client = $resolveClientStep->execute($request->validated());
+    /**
+     * @throws Throwable
+     */
+    public function store(StoreCalculateRequest $request, StoreCalculateUseCase $storeCalculate): RedirectResponse
+    {
+        $storeCalculate->execute($request->validated());
 
-        return response()->json([
-            'client' => $this->serializeClient($client),
-        ]);
+        return to_route('calculate');
     }
 
     /**
@@ -64,6 +65,4 @@ class CalculateController extends Controller
             'notes' => $client->notes,
         ];
     }
-
-    public function store() {}
 }

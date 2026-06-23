@@ -7,6 +7,7 @@ import AppCard from '@/components/AppCard.vue';
 import AppInput from '@/components/AppInput.vue';
 import AppTextArea from '@/components/AppTextArea.vue';
 import type { Client } from '@/models/client';
+import calculate from '@/routes/calculate';
 
 const props = defineProps<{
     clients: Client[];
@@ -37,13 +38,14 @@ const stepErrors = reactive<Record<ClientStepField, string>>({
 
 const form = useForm({
     client_id: props.selectedClient?.id ?? null,
-    client_mode: props.selectedClient ? 'existing' : 'new',
-    name: '',
-    last_name: '',
-    phone: '',
-    email: '',
-    curp: '',
-    client_notes: '',
+    client: {
+        name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        curp: '',
+        notes: '',
+    },
     notes: '',
     device_category_id: null,
     brand: '',
@@ -99,7 +101,6 @@ const selectedClient = ref<Client | null>(props.selectedClient);
 const showClientDropdown = ref(false);
 const manualCustomerMode = ref(false);
 const manualNameInputRef = ref<{ focus: () => void } | null>(null);
-const resolvingClientStep = ref(false);
 let searchTimer: ReturnType<typeof window.setTimeout> | null = null;
 let searchRequestId = 0;
 
@@ -111,12 +112,12 @@ const showManualCustomerFields = computed(
     () =>
         manualCustomerMode.value ||
         (!!clientSearch.value.trim() && !form.client_id) ||
-        !!form.name ||
-        !!form.last_name ||
-        !!form.phone ||
-        !!form.email ||
-        !!form.curp ||
-        !!form.client_notes,
+        !!form.client.name ||
+        !!form.client.last_name ||
+        !!form.client.phone ||
+        !!form.client.email ||
+        !!form.client.curp ||
+        !!form.client.notes,
 );
 
 const handleSearchInput = (event: Event) => {
@@ -137,7 +138,6 @@ const handleSearchInput = (event: Event) => {
 
 const selectClient = (client: Client) => {
     form.client_id = client.id;
-    form.client_mode = 'existing';
     clearClientFields();
     selectedClient.value = client;
     clientSearch.value =
@@ -149,7 +149,6 @@ const selectClient = (client: Client) => {
 
 const activateManualCustomer = async () => {
     form.client_id = null;
-    form.client_mode = 'new';
     selectedClient.value = null;
     clientSearch.value = '';
     manualCustomerMode.value = true;
@@ -175,12 +174,12 @@ const clearStepErrors = () => {
 };
 
 const clearClientFields = () => {
-    form.name = '';
-    form.last_name = '';
-    form.phone = '';
-    form.email = '';
-    form.curp = '';
-    form.client_notes = '';
+    form.client.name = '';
+    form.client.last_name = '';
+    form.client.phone = '';
+    form.client.email = '';
+    form.client.curp = '';
+    form.client.notes = '';
 };
 
 const handleManualInput = (
@@ -188,18 +187,14 @@ const handleManualInput = (
     value: string | number | undefined,
 ) => {
     form.client_id = null;
-    form.client_mode = 'new';
     selectedClient.value = null;
-    form[field] = String(value ?? '');
+    form.client[field === 'client_notes' ? 'notes' : field] = String(
+        value ?? '',
+    );
     manualCustomerMode.value = true;
     clearStepError(field === 'client_notes' ? 'notes' : field);
     stepErrors.client_id = '';
 };
-
-const csrfToken = () =>
-    document
-        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        ?.getAttribute('content') ?? '';
 
 const scheduleClientSearch = () => {
     if (searchTimer) {
@@ -217,11 +212,16 @@ const searchClients = async () => {
         search: clientSearch.value.trim(),
     });
 
-    const response = await fetch(`/calculate/clients/search?${params}`, {
-        headers: {
-            Accept: 'application/json',
+    const response = await fetch(
+        calculate.clients.search.url({
+            query: Object.fromEntries(params),
+        }),
+        {
+            headers: {
+                Accept: 'application/json',
+            },
         },
-    });
+    );
 
     if (!response.ok || requestId !== searchRequestId) {
         return;
@@ -247,62 +247,57 @@ const applyServerErrors = (errors: Record<string, string[]>) => {
     }
 };
 
-const submitClientStep = async () => {
-    resolvingClientStep.value = true;
+const validateClientStep = () => {
     clearStepErrors();
 
-    const response = await fetch('/calculate/client-step', {
-        method: 'POST',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken(),
+    if (form.client_id) {
+        return true;
+    }
+
+    if (!form.client.name.trim()) {
+        stepErrors.name = 'El nombre es obligatorio.';
+    }
+
+    if (!form.client.curp.trim()) {
+        stepErrors.curp = 'La CURP es obligatoria.';
+    }
+
+    if (stepErrors.name || stepErrors.curp) {
+        manualCustomerMode.value = true;
+        return false;
+    }
+
+    return true;
+};
+
+const submitCalculate = () => {
+    form.post(calculate.store().url, {
+        preserveScroll: true,
+        onError: (errors) => {
+            const normalizedErrors = Object.fromEntries(
+                Object.entries(errors).map(([field, message]) => [
+                    field.replace('client.', ''),
+                    [message],
+                ]),
+            );
+
+            applyServerErrors(normalizedErrors);
+            currentStep.value = 1;
         },
-        body: JSON.stringify({
-            client_mode: form.client_id ? 'existing' : 'new',
-            client_id: form.client_id,
-            name: form.name,
-            last_name: form.last_name,
-            phone: form.phone,
-            email: form.email,
-            curp: form.curp,
-            notes: form.client_notes,
-        }),
     });
-
-    resolvingClientStep.value = false;
-
-    if (response.status === 422) {
-        const data = (await response.json()) as {
-            errors: Record<string, string[]>;
-        };
-        applyServerErrors(data.errors);
-        return;
-    }
-
-    if (!response.ok) {
-        stepErrors.client_id =
-            'No pudimos guardar el cliente. Intenta nuevamente.';
-        return;
-    }
-
-    const data = (await response.json()) as { client: Client };
-    selectedClient.value = data.client;
-    clientResults.value = [data.client, ...clientResults.value].filter(
-        (client, index, clients) =>
-            clients.findIndex((item) => item.id === client.id) === index,
-    );
-    form.client_id = data.client.id;
-    form.client_mode = 'existing';
-    clientSearch.value =
-        `${data.client.name ?? ''} ${data.client.last_name ?? ''}`.trim();
-    manualCustomerMode.value = false;
-    currentStep.value = 2;
 };
 
 const goToNextStep = () => {
     if (currentStep.value === 1) {
-        void submitClientStep();
+        if (validateClientStep()) {
+            currentStep.value = 2;
+        }
+
+        return;
+    }
+
+    if (currentStep.value === steps.length) {
+        submitCalculate();
         return;
     }
 
@@ -622,7 +617,7 @@ const goToNextStep = () => {
                             >
                                 <AppInput
                                     ref="manualNameInputRef"
-                                    :model-value="form.name"
+                                    :model-value="form.client.name"
                                     label="Nombre"
                                     placeholder="Ej. Maria"
                                     :required="!form.client_id"
@@ -633,7 +628,7 @@ const goToNextStep = () => {
                                 />
 
                                 <AppInput
-                                    :model-value="form.last_name"
+                                    :model-value="form.client.last_name"
                                     label="Apellidos"
                                     placeholder="Ej. Lopez Hernandez"
                                     :error="stepErrors.last_name"
@@ -643,7 +638,7 @@ const goToNextStep = () => {
                                 />
 
                                 <AppInput
-                                    :model-value="form.phone"
+                                    :model-value="form.client.phone"
                                     label="Telefono"
                                     placeholder="Ej. 55 1234 5678"
                                     :error="stepErrors.phone"
@@ -653,7 +648,7 @@ const goToNextStep = () => {
                                 />
 
                                 <AppInput
-                                    :model-value="form.email"
+                                    :model-value="form.client.email"
                                     label="Correo electronico"
                                     placeholder="cliente@correo.com"
                                     type="email"
@@ -664,7 +659,7 @@ const goToNextStep = () => {
                                 />
 
                                 <AppInput
-                                    :model-value="form.curp"
+                                    :model-value="form.client.curp"
                                     label="CURP"
                                     placeholder="Ej. LOMM800101HDFPRR09"
                                     :required="!form.client_id"
@@ -675,7 +670,7 @@ const goToNextStep = () => {
                                 />
 
                                 <AppTextArea
-                                    :model-value="form.client_notes"
+                                    :model-value="form.client.notes"
                                     label="Notas del cliente"
                                     placeholder="Datos adicionales del expediente"
                                     :error="stepErrors.notes"
@@ -721,8 +716,8 @@ const goToNextStep = () => {
                 </AppButton>
 
                 <AppButton
-                    :loading="resolvingClientStep"
-                    :disabled="resolvingClientStep"
+                    :loading="form.processing"
+                    :disabled="form.processing"
                     @click="goToNextStep"
                 >
                     {{ currentStep === 4 ? 'Finalizar' : 'Continuar' }}
