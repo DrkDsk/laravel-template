@@ -5,39 +5,47 @@ import { computed, reactive, ref, nextTick } from 'vue';
 import AppButton from '@/components/AppButton.vue';
 import AppCard from '@/components/AppCard.vue';
 import AppInput from '@/components/AppInput.vue';
+import AppTextArea from '@/components/AppTextArea.vue';
 import type { Client } from '@/models/client';
+import calculate from '@/routes/calculate';
 
 const props = defineProps<{
     clients: Client[];
     selectedClient: Client | null;
     filters: {
-        type: object;
         search: string;
     };
 }>();
 
-const stepErrors = reactive({
+type ClientStepField =
+    | 'client_id'
+    | 'name'
+    | 'last_name'
+    | 'phone'
+    | 'email'
+    | 'curp'
+    | 'notes';
+
+const stepErrors = reactive<Record<ClientStepField, string>>({
     client_id: '',
-    customer_name: '',
-    customer_phone: '',
-    issue: '',
+    name: '',
+    last_name: '',
+    phone: '',
+    email: '',
+    curp: '',
+    notes: '',
 });
 
 const form = useForm({
     client_id: props.selectedClient?.id ?? null,
-    customer_name: '',
-    customer_phone: '',
-    notes: '',
-    device_category_id: null,
-    brand: '',
-    model: '',
-    serial_number: '',
-    inventory_number: '',
-    password: '',
-    issue: '',
-    observations: '',
-    accessories: '',
-    service_id: null,
+    client: {
+        name: '',
+        last_name: '',
+        phone: '',
+        email: '',
+        curp: '',
+        notes: '',
+    },
 });
 
 const normalizedSearch = computed(() =>
@@ -46,19 +54,23 @@ const normalizedSearch = computed(() =>
 
 const filteredClients = computed(() => {
     if (!normalizedSearch.value) {
-        return props.clients.slice(0, 6);
+        return clientResults.value.slice(0, 6);
     }
 
-    return props.clients
+    return clientResults.value
         .filter((client) => {
             const fullName = `${client.name ?? ''} ${client.last_name ?? ''}`
                 .trim()
                 .toLowerCase();
             const phone = `${client.phone ?? ''}`.toLowerCase();
+            const email = `${client.email ?? ''}`.toLowerCase();
+            const curp = `${client.curp ?? ''}`.toLowerCase();
 
             return (
                 fullName.includes(normalizedSearch.value) ||
-                phone.includes(normalizedSearch.value)
+                phone.includes(normalizedSearch.value) ||
+                email.includes(normalizedSearch.value) ||
+                curp.includes(normalizedSearch.value)
             );
         })
         .slice(0, 6);
@@ -73,9 +85,13 @@ const steps = [
 
 const currentStep = ref(1);
 const clientSearch = ref(props.filters?.search ?? '');
+const clientResults = ref<Client[]>(props.clients ?? []);
+const selectedClient = ref<Client | null>(props.selectedClient);
 const showClientDropdown = ref(false);
 const manualCustomerMode = ref(false);
-const manualNameInputRef = ref(null);
+const manualNameInputRef = ref<{ focus: () => void } | null>(null);
+let searchTimer: ReturnType<typeof window.setTimeout> | null = null;
+let searchRequestId = 0;
 
 const progressWidth = computed(
     () => `${((currentStep.value - 1) / (steps.length - 1)) * 100}%`,
@@ -85,46 +101,49 @@ const showManualCustomerFields = computed(
     () =>
         manualCustomerMode.value ||
         (!!clientSearch.value.trim() && !form.client_id) ||
-        !!form.customer_name ||
-        !!form.customer_phone,
+        !!form.client.name ||
+        !!form.client.last_name ||
+        !!form.client.phone ||
+        !!form.client.email ||
+        !!form.client.curp ||
+        !!form.client.notes,
 );
 
-const handleSearchInput = (value: string) => {
+const handleSearchInput = (event: Event) => {
+    const value = (event.target as HTMLInputElement).value;
+
     clientSearch.value = value;
     showClientDropdown.value = true;
+    manualCustomerMode.value = false;
 
     if (form.client_id) {
         form.client_id = null;
+        selectedClient.value = null;
     }
 
     stepErrors.client_id = '';
+    scheduleClientSearch();
 };
 
 const selectClient = (client: Client) => {
     form.client_id = client.id;
-    form.customer_name = '';
-    form.customer_phone = '';
+    clearClientFields();
+    selectedClient.value = client;
     clientSearch.value =
         `${client.name ?? ''} ${client.last_name ?? ''}`.trim();
     showClientDropdown.value = false;
     manualCustomerMode.value = false;
-    stepErrors.client_id = '';
-    stepErrors.customer_name = '';
-    stepErrors.customer_phone = '';
-};
-
-const focusField = (target: HTMLInputElement | null) => {
-    target?.focus();
+    clearStepErrors();
 };
 
 const activateManualCustomer = async () => {
     form.client_id = null;
+    selectedClient.value = null;
     clientSearch.value = '';
     manualCustomerMode.value = true;
     showClientDropdown.value = false;
     await nextTick();
-    console.log(manualNameInputRef.value);
-    focusField(manualNameInputRef.value);
+    manualNameInputRef.value?.focus?.();
 };
 
 const hideDropdown = () => {
@@ -133,18 +152,229 @@ const hideDropdown = () => {
     }, 120);
 };
 
-const clearStepError = (field) => {
+const clearStepError = (field: ClientStepField) => {
     stepErrors[field] = '';
 };
 
-const handleManualInput = (field, value) => {
-    form.client_id = null;
-    form[field] = value;
-    manualCustomerMode.value = true;
-    clearStepError(field);
-    stepErrors.client_id = '';
+const clearStepErrors = () => {
+    Object.keys(stepErrors).forEach((field) => {
+        stepErrors[field as ClientStepField] = '';
+    });
 };
 
+const clearClientFields = () => {
+    form.client.name = '';
+    form.client.last_name = '';
+    form.client.phone = '';
+    form.client.email = '';
+    form.client.curp = '';
+    form.client.notes = '';
+};
+
+const curpPattern =
+    /^[A-Z][AEIOUX][A-Z]{2}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[HM](AS|BC|BS|CC|CL|CM|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9]\d$/i;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const normalizePhone = (value: string) => value.replace(/\D+/g, '');
+
+const validateClientField = (
+    field: Exclude<ClientStepField, 'client_id' | 'last_name' | 'notes'>,
+    options: { requireRequiredFields?: boolean } = {},
+) => {
+    if (field === 'name') {
+        stepErrors.name = form.client.name.trim()
+            ? ''
+            : options.requireRequiredFields
+              ? 'El nombre es obligatorio.'
+              : '';
+
+        return !stepErrors.name;
+    }
+
+    if (field === 'phone') {
+        const normalizedPhone = normalizePhone(form.client.phone);
+
+        stepErrors.phone =
+            normalizedPhone && normalizedPhone.length !== 10
+                ? 'El telefono debe contener exactamente 10 digitos.'
+                : '';
+
+        return !stepErrors.phone;
+    }
+
+    if (field === 'email') {
+        const email = form.client.email.trim();
+
+        stepErrors.email =
+            email && !emailPattern.test(email)
+                ? 'El correo electronico debe tener un formato valido.'
+                : '';
+
+        return !stepErrors.email;
+    }
+
+    form.client.curp = form.client.curp.toUpperCase();
+
+    stepErrors.curp = !form.client.curp.trim()
+        ? options.requireRequiredFields
+            ? 'La CURP es obligatoria.'
+            : ''
+        : curpPattern.test(form.client.curp)
+          ? ''
+          : 'La CURP debe tener un formato mexicano valido.';
+
+    return !stepErrors.curp;
+};
+
+const validateClientFormatFields = () => {
+    const phoneIsValid = validateClientField('phone');
+    const emailIsValid = validateClientField('email');
+    const curpIsValid = validateClientField('curp', {
+        requireRequiredFields: true,
+    });
+
+    return phoneIsValid && emailIsValid && curpIsValid;
+};
+
+const handleManualInput = (
+    field: Exclude<ClientStepField, 'client_id' | 'notes'> | 'client_notes',
+    value: string | number | undefined,
+) => {
+    form.client_id = null;
+    selectedClient.value = null;
+    const clientField = field === 'client_notes' ? 'notes' : field;
+    const normalizedValue =
+        clientField === 'curp' ? String(value ?? '').toUpperCase() : value;
+
+    form.client[clientField] = String(normalizedValue ?? '');
+    manualCustomerMode.value = true;
+    stepErrors.client_id = '';
+
+    if (
+        clientField === 'name' ||
+        clientField === 'phone' ||
+        clientField === 'email' ||
+        clientField === 'curp'
+    ) {
+        validateClientField(clientField);
+        return;
+    }
+
+    clearStepError(clientField);
+};
+
+const scheduleClientSearch = () => {
+    if (searchTimer) {
+        window.clearTimeout(searchTimer);
+    }
+
+    searchTimer = window.setTimeout(() => {
+        void searchClients();
+    }, 250);
+};
+
+const searchClients = async () => {
+    const requestId = ++searchRequestId;
+    const params = new URLSearchParams({
+        search: clientSearch.value.trim(),
+    });
+
+    const response = await fetch(
+        calculate.clients.search.url({
+            query: Object.fromEntries(params),
+        }),
+        {
+            headers: {
+                Accept: 'application/json',
+            },
+        },
+    );
+
+    if (!response.ok || requestId !== searchRequestId) {
+        return;
+    }
+
+    const data = (await response.json()) as { clients: Client[] };
+    clientResults.value = data.clients;
+};
+
+const applyServerErrors = (errors: Record<string, string[]>) => {
+    clearStepErrors();
+
+    Object.entries(errors).forEach(([field, messages]) => {
+        const target = field as ClientStepField;
+
+        if (target in stepErrors) {
+            stepErrors[target] = messages[0] ?? '';
+        }
+    });
+
+    if (Object.keys(errors).some((field) => field !== 'client_id')) {
+        manualCustomerMode.value = true;
+    }
+};
+
+const validateClientStep = () => {
+    clearStepErrors();
+
+    if (form.client_id) {
+        return true;
+    }
+
+    const nameIsValid = validateClientField('name', {
+        requireRequiredFields: true,
+    });
+    const formatFieldsAreValid = validateClientFormatFields();
+
+    if (!nameIsValid || !formatFieldsAreValid) {
+        manualCustomerMode.value = true;
+
+        return false;
+    }
+
+    return true;
+};
+
+const submitCalculate = () => {
+    form.post(calculate.store().url, {
+        preserveScroll: true,
+        onError: (errors) => {
+            const normalizedErrors = Object.fromEntries(
+                Object.entries(errors).map(([field, message]) => [
+                    field.replace('client.', ''),
+                    [message],
+                ]),
+            );
+
+            applyServerErrors(normalizedErrors);
+            currentStep.value = 1;
+        },
+    });
+};
+
+const goToNextStep = () => {
+    if (currentStep.value === 1) {
+        if (validateClientStep()) {
+            currentStep.value = 2;
+        }
+
+        return;
+    }
+
+    if (currentStep.value === steps.length) {
+        if (!validateClientStep()) {
+            currentStep.value = 1;
+
+            return;
+        }
+
+        submitCalculate();
+
+        return;
+    }
+
+    currentStep.value = Math.min(currentStep.value + 1, steps.length);
+};
 </script>
 
 <template>
@@ -297,7 +527,7 @@ const handleManualInput = (field, value) => {
                                                 ref="searchInputRef"
                                                 :value="clientSearch"
                                                 type="text"
-                                                placeholder="Nombre, apellido o telefono"
+                                                placeholder="Nombre, apellido, telefono, correo o CURP"
                                                 class="focus:border-primary-500 focus:ring-primary-500/15 block w-full rounded-sm border bg-white py-2 pr-4 pl-10 text-sm text-slate-900 transition duration-200 ease-in-out placeholder:text-slate-400 focus:ring-2 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                                                 :class="
                                                     stepErrors.client_id
@@ -355,7 +585,7 @@ const handleManualInput = (field, value) => {
                                             </button>
 
                                             <div
-                                                v-if="!clients.length"
+                                                v-if="!filteredClients.length"
                                                 class="px-4 py-4 text-sm text-slate-500 dark:text-slate-400"
                                             >
                                                 No encontramos coincidencias con
@@ -391,6 +621,12 @@ const handleManualInput = (field, value) => {
                                                         selectedClient.phone ||
                                                         'Sin telefono registrado'
                                                     }}
+                                                </p>
+                                                <p
+                                                    v-if="selectedClient.email"
+                                                    class="mt-1 text-sm text-slate-500 dark:text-slate-400"
+                                                >
+                                                    {{ selectedClient.email }}
                                                 </p>
                                             </div>
 
@@ -453,28 +689,79 @@ const handleManualInput = (field, value) => {
                             >
                                 <AppInput
                                     ref="manualNameInputRef"
-                                    :model-value="form.customer_name"
-                                    label="Nombre del cliente"
-                                    placeholder="Ej. Maria Lopez"
+                                    :model-value="form.client.name"
+                                    label="Nombre"
+                                    placeholder="Ej. Maria"
                                     :required="!form.client_id"
-                                    :error="stepErrors.customer_name"
+                                    :error="stepErrors.name"
                                     @update:model-value="
-                                        handleManualInput(
-                                            'customer_name',
-                                            $event,
-                                        )
+                                        handleManualInput('name', $event)
+                                    "
+                                    @blur="
+                                        validateClientField('name', {
+                                            requireRequiredFields: true,
+                                        })
                                     "
                                 />
 
                                 <AppInput
-                                    :model-value="form.customer_phone"
-                                    label="Telefono de contacto"
+                                    :model-value="form.client.last_name"
+                                    label="Apellidos"
+                                    placeholder="Ej. Lopez Hernandez"
+                                    :error="stepErrors.last_name"
+                                    @update:model-value="
+                                        handleManualInput('last_name', $event)
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.client.phone"
+                                    label="Telefono"
                                     placeholder="Ej. 55 1234 5678"
+                                    :error="stepErrors.phone"
+                                    @update:model-value="
+                                        handleManualInput('phone', $event)
+                                    "
+                                    @blur="validateClientField('phone')"
+                                />
+
+                                <AppInput
+                                    :model-value="form.client.email"
+                                    label="Correo electronico"
+                                    placeholder="cliente@correo.com"
+                                    type="email"
+                                    :error="stepErrors.email"
+                                    @update:model-value="
+                                        handleManualInput('email', $event)
+                                    "
+                                    @blur="validateClientField('email')"
+                                />
+
+                                <AppInput
+                                    :model-value="form.client.curp"
+                                    label="CURP"
+                                    placeholder="Ej. LOMM800101HDFPRR09"
                                     :required="!form.client_id"
-                                    :error="stepErrors.customer_phone"
+                                    :error="stepErrors.curp"
+                                    @update:model-value="
+                                        handleManualInput('curp', $event)
+                                    "
+                                    @blur="
+                                        validateClientField('curp', {
+                                            requireRequiredFields: true,
+                                        })
+                                    "
+                                />
+
+                                <AppTextArea
+                                    :model-value="form.client.notes"
+                                    label="Notas del cliente"
+                                    placeholder="Datos adicionales del expediente"
+                                    :error="stepErrors.notes"
+                                    class="md:col-span-2"
                                     @update:model-value="
                                         handleManualInput(
-                                            'customer_phone',
+                                            'client_notes',
                                             $event,
                                         )
                                     "
@@ -499,6 +786,26 @@ const handleManualInput = (field, value) => {
                         </template>
                     </section>
                 </Transition>
+            </div>
+
+            <div
+                class="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-5 sm:px-8 dark:border-slate-800"
+            >
+                <AppButton
+                    variant="ghost"
+                    :disabled="currentStep === 1"
+                    @click="currentStep = Math.max(currentStep - 1, 1)"
+                >
+                    Anterior
+                </AppButton>
+
+                <AppButton
+                    :loading="form.processing"
+                    :disabled="form.processing"
+                    @click="goToNextStep"
+                >
+                    {{ currentStep === 4 ? 'Finalizar' : 'Continuar' }}
+                </AppButton>
             </div>
         </AppCard>
     </div>
