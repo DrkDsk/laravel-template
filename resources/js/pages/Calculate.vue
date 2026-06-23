@@ -46,17 +46,6 @@ const form = useForm({
         curp: '',
         notes: '',
     },
-    notes: '',
-    device_category_id: null,
-    brand: '',
-    model: '',
-    serial_number: '',
-    inventory_number: '',
-    password: '',
-    issue: '',
-    observations: '',
-    accessories: '',
-    service_id: null,
 });
 
 const normalizedSearch = computed(() =>
@@ -264,6 +253,7 @@ const validateClientStep = () => {
 
     if (stepErrors.name || stepErrors.curp) {
         manualCustomerMode.value = true;
+
         return false;
     }
 
@@ -298,6 +288,7 @@ const goToNextStep = () => {
 
     if (currentStep.value === steps.length) {
         submitCalculate();
+
         return;
     }
 
