@@ -13,10 +13,11 @@ return new class extends Migration
     {
         Schema::create('client_family_information', static function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('client_id')->unique()->constrained()->cascadeOnDelete();
             $table->boolean('has_spouse')->default(false);
-            $table->integer('minor_or_student_children_count');
-            $table->integer('parents_count');
+            $table->unsignedInteger('minor_or_student_children_count');
+            $table->unsignedInteger('parents_count');
+
             $table->timestamps();
         });
     }
