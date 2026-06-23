@@ -6,6 +6,7 @@ use App\Http\Requests\Calculate\StoreCalculateRequest;
 use App\Models\Client;
 use App\UseCases\Calculate\SearchClientsUseCase;
 use App\UseCases\Calculate\StoreCalculateUseCase;
+use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -62,7 +63,24 @@ class CalculateController extends Controller
             'phone' => $client->phone,
             'email' => $client->email,
             'curp' => $client->curp,
+            'birthdate' => $this->serializeDate($client->getAttribute('birthdate')),
+            'nss' => $client->nss,
+            'regime_end_date' => $this->serializeDate($client->getAttribute('regime_end_date')),
+            'unemployment_assistance_discounted_weeks' => $client->unemployment_assistance_discounted_weeks,
             'notes' => $client->notes,
         ];
+    }
+
+    private function serializeDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_string($value) && $value !== '') {
+            return substr($value, 0, 10);
+        }
+
+        return null;
     }
 }

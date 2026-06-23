@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Client extends Model
 {
@@ -12,6 +13,30 @@ class Client extends Model
         'phone',
         'email',
         'curp',
+        'birthdate',
+        'nss',
+        'regime_end_date',
+        'unemployment_assistance_discounted_weeks',
         'notes',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'birthdate' => 'date',
+            'regime_end_date' => 'date',
+            'unemployment_assistance_discounted_weeks' => 'integer',
+        ];
+    }
+
+    /**
+     * @return HasOne<ClientFamilyInformation, $this>
+     */
+    public function familyInformation(): HasOne
+    {
+        return $this->hasOne(ClientFamilyInformation::class);
+    }
 }

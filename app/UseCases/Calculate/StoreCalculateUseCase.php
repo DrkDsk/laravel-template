@@ -3,6 +3,8 @@
 namespace App\UseCases\Calculate;
 
 use App\Models\Client;
+use App\Models\ClientFamilyInformation;
+use App\Repositories\Contract\ClientFamilyInformationRepositoryInterface;
 use App\Repositories\Contract\ClientRepositoryInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +14,7 @@ readonly class StoreCalculateUseCase
 {
     public function __construct(
         private ClientRepositoryInterface $clientRepository,
+        private ClientFamilyInformationRepositoryInterface $clientFamilyInformationRepository,
     ) {}
 
     /**
@@ -38,6 +41,14 @@ readonly class StoreCalculateUseCase
                 throw new ModelNotFoundException;
             }
 
+            $familyInformation = $this->clientFamilyInformationRepository->create(
+                $this->familyInformationData($data, $client),
+            );
+
+            if (! $familyInformation instanceof ClientFamilyInformation) {
+                throw new ModelNotFoundException;
+            }
+
             return $client;
         });
     }
@@ -55,6 +66,10 @@ readonly class StoreCalculateUseCase
             'phone',
             'email',
             'curp',
+            'birthdate',
+            'nss',
+            'regime_end_date',
+            'unemployment_assistance_discounted_weeks',
             'notes',
         ]);
 
@@ -65,5 +80,27 @@ readonly class StoreCalculateUseCase
         }
 
         return $clientData;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function familyInformationData(array $data, Client $client): array
+    {
+        $familyInformation = is_array($data['family_information'] ?? null)
+            ? $data['family_information']
+            : [];
+
+        $allowedFields = array_flip([
+            'has_spouse',
+            'minor_or_student_children_count',
+            'parents_count',
+        ]);
+
+        return [
+            'client_id' => $client->id,
+            ...array_intersect_key($familyInformation, $allowedFields),
+        ];
     }
 }
