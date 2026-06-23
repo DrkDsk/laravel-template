@@ -64,9 +64,8 @@ test('calculate store creates a new client from required client fields', functio
             'client' => [
                 'name' => 'Alfredo',
                 'last_name' => 'Palacios',
-                'phone' => '5512345678',
-                'email' => 'alfredo@example.com',
-                'curp' => 'PAAA800101HDFLLL09',
+                'phone' => '(55) 1234-5678',
+                'curp' => 'paaa800101hdflll09',
                 'notes' => 'Cliente nuevo para calculo.',
             ],
         ]);
@@ -77,8 +76,28 @@ test('calculate store creates a new client from required client fields', functio
         'name' => 'Alfredo',
         'last_name' => 'Palacios',
         'phone' => '5512345678',
-        'email' => 'alfredo@example.com',
         'curp' => 'PAAA800101HDFLLL09',
         'notes' => 'Cliente nuevo para calculo.',
     ]);
+});
+
+test('calculate store rejects invalid client contact formats', function () {
+    $user = User::factory()->create();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('calculate'))
+        ->post(route('calculate.store'), [
+            'client_id' => null,
+            'client' => [
+                'name' => 'Alfredo',
+                'phone' => '55 1234',
+                'email' => 'alfredo',
+                'curp' => 'CURP_INVALIDA',
+            ],
+        ]);
+
+    $response
+        ->assertRedirect(route('calculate'))
+        ->assertSessionHasErrors(['client.phone', 'client.email', 'client.curp']);
 });

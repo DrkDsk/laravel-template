@@ -171,18 +171,96 @@ const clearClientFields = () => {
     form.client.notes = '';
 };
 
+const curpPattern =
+    /^[A-Z][AEIOUX][A-Z]{2}\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[HM](AS|BC|BS|CC|CL|CM|CS|CH|DF|DG|GT|GR|HG|JC|MC|MN|MS|NT|NL|OC|PL|QT|QR|SP|SL|SR|TC|TS|TL|VZ|YN|ZS|NE)[B-DF-HJ-NP-TV-Z]{3}[A-Z0-9]\d$/i;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+const normalizePhone = (value: string) => value.replace(/\D+/g, '');
+
+const validateClientField = (
+    field: Exclude<ClientStepField, 'client_id' | 'last_name' | 'notes'>,
+    options: { requireRequiredFields?: boolean } = {},
+) => {
+    if (field === 'name') {
+        stepErrors.name = form.client.name.trim()
+            ? ''
+            : options.requireRequiredFields
+              ? 'El nombre es obligatorio.'
+              : '';
+
+        return !stepErrors.name;
+    }
+
+    if (field === 'phone') {
+        const normalizedPhone = normalizePhone(form.client.phone);
+
+        stepErrors.phone =
+            normalizedPhone && normalizedPhone.length !== 10
+                ? 'El telefono debe contener exactamente 10 digitos.'
+                : '';
+
+        return !stepErrors.phone;
+    }
+
+    if (field === 'email') {
+        const email = form.client.email.trim();
+
+        stepErrors.email =
+            email && !emailPattern.test(email)
+                ? 'El correo electronico debe tener un formato valido.'
+                : '';
+
+        return !stepErrors.email;
+    }
+
+    form.client.curp = form.client.curp.toUpperCase();
+
+    stepErrors.curp = !form.client.curp.trim()
+        ? options.requireRequiredFields
+            ? 'La CURP es obligatoria.'
+            : ''
+        : curpPattern.test(form.client.curp)
+          ? ''
+          : 'La CURP debe tener un formato mexicano valido.';
+
+    return !stepErrors.curp;
+};
+
+const validateClientFormatFields = () => {
+    const phoneIsValid = validateClientField('phone');
+    const emailIsValid = validateClientField('email');
+    const curpIsValid = validateClientField('curp', {
+        requireRequiredFields: true,
+    });
+
+    return phoneIsValid && emailIsValid && curpIsValid;
+};
+
 const handleManualInput = (
     field: Exclude<ClientStepField, 'client_id' | 'notes'> | 'client_notes',
     value: string | number | undefined,
 ) => {
     form.client_id = null;
     selectedClient.value = null;
-    form.client[field === 'client_notes' ? 'notes' : field] = String(
-        value ?? '',
-    );
+    const clientField = field === 'client_notes' ? 'notes' : field;
+    const normalizedValue =
+        clientField === 'curp' ? String(value ?? '').toUpperCase() : value;
+
+    form.client[clientField] = String(normalizedValue ?? '');
     manualCustomerMode.value = true;
-    clearStepError(field === 'client_notes' ? 'notes' : field);
     stepErrors.client_id = '';
+
+    if (
+        clientField === 'name' ||
+        clientField === 'phone' ||
+        clientField === 'email' ||
+        clientField === 'curp'
+    ) {
+        validateClientField(clientField);
+        return;
+    }
+
+    clearStepError(clientField);
 };
 
 const scheduleClientSearch = () => {
@@ -243,15 +321,12 @@ const validateClientStep = () => {
         return true;
     }
 
-    if (!form.client.name.trim()) {
-        stepErrors.name = 'El nombre es obligatorio.';
-    }
+    const nameIsValid = validateClientField('name', {
+        requireRequiredFields: true,
+    });
+    const formatFieldsAreValid = validateClientFormatFields();
 
-    if (!form.client.curp.trim()) {
-        stepErrors.curp = 'La CURP es obligatoria.';
-    }
-
-    if (stepErrors.name || stepErrors.curp) {
+    if (!nameIsValid || !formatFieldsAreValid) {
         manualCustomerMode.value = true;
 
         return false;
@@ -287,6 +362,12 @@ const goToNextStep = () => {
     }
 
     if (currentStep.value === steps.length) {
+        if (!validateClientStep()) {
+            currentStep.value = 1;
+
+            return;
+        }
+
         submitCalculate();
 
         return;
@@ -616,6 +697,11 @@ const goToNextStep = () => {
                                     @update:model-value="
                                         handleManualInput('name', $event)
                                     "
+                                    @blur="
+                                        validateClientField('name', {
+                                            requireRequiredFields: true,
+                                        })
+                                    "
                                 />
 
                                 <AppInput
@@ -636,6 +722,7 @@ const goToNextStep = () => {
                                     @update:model-value="
                                         handleManualInput('phone', $event)
                                     "
+                                    @blur="validateClientField('phone')"
                                 />
 
                                 <AppInput
@@ -647,6 +734,7 @@ const goToNextStep = () => {
                                     @update:model-value="
                                         handleManualInput('email', $event)
                                     "
+                                    @blur="validateClientField('email')"
                                 />
 
                                 <AppInput
@@ -657,6 +745,11 @@ const goToNextStep = () => {
                                     :error="stepErrors.curp"
                                     @update:model-value="
                                         handleManualInput('curp', $event)
+                                    "
+                                    @blur="
+                                        validateClientField('curp', {
+                                            requireRequiredFields: true,
+                                        })
                                     "
                                 />
 
