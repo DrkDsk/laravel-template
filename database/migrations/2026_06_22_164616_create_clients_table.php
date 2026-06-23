@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('phone')->nullable()->index();
             $table->string('email')->nullable()->index();
             $table->string('curp');
+            $table->date('birthdate');
+            $table->string('nss');
+            $table->date('regime_end_date');
             $table->text('notes')->nullable();
             $table->timestamps();
 
