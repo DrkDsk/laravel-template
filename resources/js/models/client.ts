@@ -5,5 +5,9 @@ export interface Client {
     phone: string | null;
     email: string | null;
     curp: string;
+    birthdate: string;
+    nss: string;
+    regime_end_date: string | null;
+    unemployment_assistance_discounted_weeks: number;
     notes: string | null;
 }

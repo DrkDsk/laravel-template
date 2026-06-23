@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Repositories\Contract\ClientFamilyInformationRepositoryInterface;
 use App\Repositories\Contract\ClientRepositoryInterface;
+use App\Repositories\Eloquent\ClientFamilyInformationRepository;
 use App\Repositories\Eloquent\ClientRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -18,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ClientRepositoryInterface::class, ClientRepository::class);
+        $this->app->bind(ClientFamilyInformationRepositoryInterface::class, ClientFamilyInformationRepository::class);
     }
 
     /**

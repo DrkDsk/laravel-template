@@ -5,6 +5,7 @@ import { computed, reactive, ref, nextTick } from 'vue';
 import AppButton from '@/components/AppButton.vue';
 import AppCard from '@/components/AppCard.vue';
 import AppInput from '@/components/AppInput.vue';
+import AppSelect from '@/components/AppSelect.vue';
 import AppTextArea from '@/components/AppTextArea.vue';
 import type { Client } from '@/models/client';
 import calculate from '@/routes/calculate';
@@ -24,7 +25,14 @@ type ClientStepField =
     | 'phone'
     | 'email'
     | 'curp'
-    | 'notes';
+    | 'birthdate'
+    | 'nss'
+    | 'regime_end_date'
+    | 'unemployment_assistance_discounted_weeks'
+    | 'notes'
+    | 'has_spouse'
+    | 'minor_or_student_children_count'
+    | 'parents_count';
 
 const stepErrors = reactive<Record<ClientStepField, string>>({
     client_id: '',
@@ -33,7 +41,14 @@ const stepErrors = reactive<Record<ClientStepField, string>>({
     phone: '',
     email: '',
     curp: '',
+    birthdate: '',
+    nss: '',
+    regime_end_date: '',
+    unemployment_assistance_discounted_weeks: '',
     notes: '',
+    has_spouse: '',
+    minor_or_student_children_count: '',
+    parents_count: '',
 });
 
 const form = useForm({
@@ -44,7 +59,16 @@ const form = useForm({
         phone: '',
         email: '',
         curp: '',
+        birthdate: '',
+        nss: '',
+        regime_end_date: '',
+        unemployment_assistance_discounted_weeks: '',
         notes: '',
+    },
+    family_information: {
+        has_spouse: '',
+        minor_or_student_children_count: '',
+        parents_count: '',
     },
 });
 
@@ -106,6 +130,13 @@ const showManualCustomerFields = computed(
         !!form.client.phone ||
         !!form.client.email ||
         !!form.client.curp ||
+        !!form.client.birthdate ||
+        !!form.client.nss ||
+        !!form.client.regime_end_date ||
+        !!form.client.unemployment_assistance_discounted_weeks ||
+        form.family_information.has_spouse !== '' ||
+        !!form.family_information.minor_or_student_children_count ||
+        !!form.family_information.parents_count ||
         !!form.client.notes,
 );
 
@@ -168,7 +199,14 @@ const clearClientFields = () => {
     form.client.phone = '';
     form.client.email = '';
     form.client.curp = '';
+    form.client.birthdate = '';
+    form.client.nss = '';
+    form.client.regime_end_date = '';
+    form.client.unemployment_assistance_discounted_weeks = '';
     form.client.notes = '';
+    form.family_information.has_spouse = '';
+    form.family_information.minor_or_student_children_count = '';
+    form.family_information.parents_count = '';
 };
 
 const curpPattern =
@@ -176,9 +214,87 @@ const curpPattern =
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const normalizePhone = (value: string) => value.replace(/\D+/g, '');
+const normalizeDigits = (value: string) => value.replace(/\D+/g, '');
+
+const isValidDateValue = (value: string) => {
+    if (!value) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+
+    return !Number.isNaN(date.getTime());
+};
+
+const eighteenYearsAgo = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setFullYear(date.getFullYear() - 18);
+
+    return date;
+};
+
+const isAtLeast18YearsOld = (value: string) => {
+    if (!isValidDateValue(value)) {
+        return false;
+    }
+
+    const birthdate = new Date(`${value}T00:00:00`);
+
+    return birthdate <= eighteenYearsAgo();
+};
+
+const isAfterDate = (value: string, comparisonValue: string) => {
+    if (!isValidDateValue(value) || !isValidDateValue(comparisonValue)) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+    const comparisonDate = new Date(`${comparisonValue}T00:00:00`);
+
+    return date > comparisonDate;
+};
+
+const eighteenthBirthdayFor = (value: string) => {
+    if (!isValidDateValue(value)) {
+        return null;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+    date.setFullYear(date.getFullYear() + 18);
+
+    return date;
+};
+
+const isAfterEighteenthBirthday = (value: string, birthdateValue: string) => {
+    if (!isValidDateValue(value)) {
+        return false;
+    }
+
+    const eighteenthBirthday = eighteenthBirthdayFor(birthdateValue);
+
+    if (!eighteenthBirthday) {
+        return false;
+    }
+
+    const date = new Date(`${value}T00:00:00`);
+
+    return date > eighteenthBirthday;
+};
+
+const isNonNegativeInteger = (value: string) =>
+    /^\d+$/.test(value) && Number(value) >= 0;
 
 const validateClientField = (
-    field: Exclude<ClientStepField, 'client_id' | 'last_name' | 'notes'>,
+    field: Exclude<
+        ClientStepField,
+        | 'client_id'
+        | 'last_name'
+        | 'notes'
+        | 'has_spouse'
+        | 'minor_or_student_children_count'
+        | 'parents_count'
+    >,
     options: { requireRequiredFields?: boolean } = {},
 ) => {
     if (field === 'name') {
@@ -213,6 +329,79 @@ const validateClientField = (
         return !stepErrors.email;
     }
 
+    if (field === 'birthdate') {
+        stepErrors.birthdate = !form.client.birthdate
+            ? options.requireRequiredFields
+                ? 'La fecha de nacimiento es obligatoria.'
+                : ''
+            : !isValidDateValue(form.client.birthdate)
+              ? 'La fecha de nacimiento no es valida.'
+              : !isAtLeast18YearsOld(form.client.birthdate)
+                ? 'El cliente debe tener al menos 18 anos cumplidos.'
+                : '';
+
+        if (form.client.regime_end_date) {
+            validateClientField('regime_end_date');
+        }
+
+        return !stepErrors.birthdate;
+    }
+
+    if (field === 'nss') {
+        form.client.nss = normalizeDigits(form.client.nss);
+
+        stepErrors.nss = !form.client.nss
+            ? options.requireRequiredFields
+                ? 'El NSS es obligatorio.'
+                : ''
+            : form.client.nss.length === 11
+              ? ''
+              : 'El NSS debe contener exactamente 11 digitos.';
+
+        return !stepErrors.nss;
+    }
+
+    if (field === 'regime_end_date') {
+        stepErrors.regime_end_date =
+            form.client.regime_end_date &&
+            !isValidDateValue(form.client.regime_end_date)
+                ? 'La fecha de baja de regimen no es valida.'
+                : form.client.regime_end_date &&
+                    form.client.birthdate &&
+                    isValidDateValue(form.client.birthdate) &&
+                    !isAfterDate(
+                        form.client.regime_end_date,
+                        form.client.birthdate,
+                    )
+                  ? 'La fecha de baja de regimen debe ser posterior a la fecha de nacimiento.'
+                  : form.client.regime_end_date &&
+                      form.client.birthdate &&
+                      isValidDateValue(form.client.birthdate) &&
+                      !isAfterEighteenthBirthday(
+                          form.client.regime_end_date,
+                          form.client.birthdate,
+                      )
+                    ? 'La fecha de baja de regimen debe ser posterior a la fecha en que el cliente cumplio 18 anos.'
+                    : '';
+
+        return !stepErrors.regime_end_date;
+    }
+
+    if (field === 'unemployment_assistance_discounted_weeks') {
+        stepErrors.unemployment_assistance_discounted_weeks = !form.client
+            .unemployment_assistance_discounted_weeks
+            ? options.requireRequiredFields
+                ? 'Las semanas descontadas son obligatorias.'
+                : ''
+            : isNonNegativeInteger(
+                    form.client.unemployment_assistance_discounted_weeks,
+                )
+              ? ''
+              : 'Las semanas descontadas deben ser un entero mayor o igual a 0.';
+
+        return !stepErrors.unemployment_assistance_discounted_weeks;
+    }
+
     form.client.curp = form.client.curp.toUpperCase();
 
     stepErrors.curp = !form.client.curp.trim()
@@ -232,12 +421,93 @@ const validateClientFormatFields = () => {
     const curpIsValid = validateClientField('curp', {
         requireRequiredFields: true,
     });
+    const birthdateIsValid = validateClientField('birthdate', {
+        requireRequiredFields: true,
+    });
+    const nssIsValid = validateClientField('nss', {
+        requireRequiredFields: true,
+    });
+    const regimeEndDateIsValid = validateClientField('regime_end_date');
+    const unemploymentWeeksAreValid = validateClientField(
+        'unemployment_assistance_discounted_weeks',
+        {
+            requireRequiredFields: true,
+        },
+    );
 
-    return phoneIsValid && emailIsValid && curpIsValid;
+    return (
+        phoneIsValid &&
+        emailIsValid &&
+        curpIsValid &&
+        birthdateIsValid &&
+        nssIsValid &&
+        regimeEndDateIsValid &&
+        unemploymentWeeksAreValid
+    );
+};
+
+const validateFamilyInformationField = (
+    field: 'has_spouse' | 'minor_or_student_children_count' | 'parents_count',
+    options: { requireRequiredFields?: boolean } = {},
+) => {
+    if (field === 'has_spouse') {
+        stepErrors.has_spouse =
+            form.family_information.has_spouse === '' &&
+            options.requireRequiredFields
+                ? 'Selecciona si tiene esposo/a.'
+                : '';
+
+        return !stepErrors.has_spouse;
+    }
+
+    const value = form.family_information[field];
+    const fieldLabel =
+        field === 'minor_or_student_children_count'
+            ? 'hijos menores o estudiando'
+            : 'padres';
+
+    stepErrors[field] = !value
+        ? options.requireRequiredFields
+            ? `El numero de ${fieldLabel} es obligatorio.`
+            : ''
+        : isNonNegativeInteger(value)
+          ? ''
+          : `El numero de ${fieldLabel} debe ser un entero mayor o igual a 0.`;
+
+    return !stepErrors[field];
+};
+
+const validateFamilyInformation = () => {
+    const hasSpouseIsValid = validateFamilyInformationField('has_spouse', {
+        requireRequiredFields: true,
+    });
+    const childrenCountIsValid = validateFamilyInformationField(
+        'minor_or_student_children_count',
+        {
+            requireRequiredFields: true,
+        },
+    );
+    const parentsCountIsValid = validateFamilyInformationField(
+        'parents_count',
+        {
+            requireRequiredFields: true,
+        },
+    );
+
+    return hasSpouseIsValid && childrenCountIsValid && parentsCountIsValid;
 };
 
 const handleManualInput = (
-    field: Exclude<ClientStepField, 'client_id' | 'notes'> | 'client_notes',
+    field:
+        | Exclude<
+              ClientStepField,
+              | 'client_id'
+              | 'notes'
+              | 'has_spouse'
+              | 'minor_or_student_children_count'
+              | 'parents_count'
+          >
+        | 'client_notes',
     value: string | number | undefined,
 ) => {
     form.client_id = null;
@@ -254,13 +524,29 @@ const handleManualInput = (
         clientField === 'name' ||
         clientField === 'phone' ||
         clientField === 'email' ||
-        clientField === 'curp'
+        clientField === 'curp' ||
+        clientField === 'birthdate' ||
+        clientField === 'nss' ||
+        clientField === 'regime_end_date' ||
+        clientField === 'unemployment_assistance_discounted_weeks'
     ) {
         validateClientField(clientField);
         return;
     }
 
     clearStepError(clientField);
+};
+
+const handleFamilyInformationInput = (
+    field: 'has_spouse' | 'minor_or_student_children_count' | 'parents_count',
+    value: string | number | undefined,
+) => {
+    form.client_id = null;
+    selectedClient.value = null;
+    form.family_information[field] = String(value ?? '');
+    manualCustomerMode.value = true;
+    stepErrors.client_id = '';
+    validateFamilyInformationField(field);
 };
 
 const scheduleClientSearch = () => {
@@ -325,8 +611,9 @@ const validateClientStep = () => {
         requireRequiredFields: true,
     });
     const formatFieldsAreValid = validateClientFormatFields();
+    const familyInformationIsValid = validateFamilyInformation();
 
-    if (!nameIsValid || !formatFieldsAreValid) {
+    if (!nameIsValid || !formatFieldsAreValid || !familyInformationIsValid) {
         manualCustomerMode.value = true;
 
         return false;
@@ -340,10 +627,13 @@ const submitCalculate = () => {
         preserveScroll: true,
         onError: (errors) => {
             const normalizedErrors = Object.fromEntries(
-                Object.entries(errors).map(([field, message]) => [
-                    field.replace('client.', ''),
-                    [message],
-                ]),
+                Object.entries(errors).map(([field, message]) => {
+                    const normalizedField = field
+                        .replace('client.', '')
+                        .replace('family_information.', '');
+
+                    return [normalizedField, [message]];
+                }),
             );
 
             applyServerErrors(normalizedErrors);
@@ -752,6 +1042,184 @@ const goToNextStep = () => {
                                         })
                                     "
                                 />
+
+                                <AppInput
+                                    :model-value="form.client.birthdate"
+                                    label="Fecha de nacimiento"
+                                    type="date"
+                                    :required="!form.client_id"
+                                    :error="stepErrors.birthdate"
+                                    @update:model-value="
+                                        handleManualInput('birthdate', $event)
+                                    "
+                                    @blur="
+                                        validateClientField('birthdate', {
+                                            requireRequiredFields: true,
+                                        })
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.client.nss"
+                                    label="NSS"
+                                    placeholder="11 digitos"
+                                    inputmode="numeric"
+                                    :required="!form.client_id"
+                                    :error="stepErrors.nss"
+                                    @update:model-value="
+                                        handleManualInput('nss', $event)
+                                    "
+                                    @blur="
+                                        validateClientField('nss', {
+                                            requireRequiredFields: true,
+                                        })
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="form.client.regime_end_date"
+                                    label="Fecha de baja de regimen"
+                                    type="date"
+                                    :error="stepErrors.regime_end_date"
+                                    @update:model-value="
+                                        handleManualInput(
+                                            'regime_end_date',
+                                            $event,
+                                        )
+                                    "
+                                    @blur="
+                                        validateClientField('regime_end_date')
+                                    "
+                                />
+
+                                <AppInput
+                                    :model-value="
+                                        form.client
+                                            .unemployment_assistance_discounted_weeks
+                                    "
+                                    label="Semanas descontadas por ayuda de desempleo"
+                                    type="number"
+                                    min="0"
+                                    step="1"
+                                    :required="!form.client_id"
+                                    :error="
+                                        stepErrors.unemployment_assistance_discounted_weeks
+                                    "
+                                    @update:model-value="
+                                        handleManualInput(
+                                            'unemployment_assistance_discounted_weeks',
+                                            $event,
+                                        )
+                                    "
+                                    @blur="
+                                        validateClientField(
+                                            'unemployment_assistance_discounted_weeks',
+                                            {
+                                                requireRequiredFields: true,
+                                            },
+                                        )
+                                    "
+                                />
+
+                                <div
+                                    class="border-t border-slate-200 pt-5 md:col-span-2 dark:border-slate-800"
+                                >
+                                    <div class="mb-4">
+                                        <h4
+                                            class="text-sm font-semibold text-slate-800 dark:text-slate-100"
+                                        >
+                                            Información familiar
+                                        </h4>
+                                    </div>
+
+                                    <div class="grid gap-4 md:grid-cols-3">
+                                        <AppSelect
+                                            :model-value="
+                                                form.family_information
+                                                    .has_spouse
+                                            "
+                                            label="Esposo/a"
+                                            :required="!form.client_id"
+                                            :error="stepErrors.has_spouse"
+                                            @update:model-value="
+                                                handleFamilyInformationInput(
+                                                    'has_spouse',
+                                                    $event,
+                                                )
+                                            "
+                                            @blur="
+                                                validateFamilyInformationField(
+                                                    'has_spouse',
+                                                    {
+                                                        requireRequiredFields: true,
+                                                    },
+                                                )
+                                            "
+                                        >
+                                            <option value="">
+                                                Seleccionar
+                                            </option>
+                                            <option value="1">Si</option>
+                                            <option value="0">No</option>
+                                        </AppSelect>
+
+                                        <AppInput
+                                            :model-value="
+                                                form.family_information
+                                                    .minor_or_student_children_count
+                                            "
+                                            label="Hijos menores o estudiando"
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            :required="!form.client_id"
+                                            :error="
+                                                stepErrors.minor_or_student_children_count
+                                            "
+                                            @update:model-value="
+                                                handleFamilyInformationInput(
+                                                    'minor_or_student_children_count',
+                                                    $event,
+                                                )
+                                            "
+                                            @blur="
+                                                validateFamilyInformationField(
+                                                    'minor_or_student_children_count',
+                                                    {
+                                                        requireRequiredFields: true,
+                                                    },
+                                                )
+                                            "
+                                        />
+
+                                        <AppInput
+                                            :model-value="
+                                                form.family_information
+                                                    .parents_count
+                                            "
+                                            label="Padres"
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            :required="!form.client_id"
+                                            :error="stepErrors.parents_count"
+                                            @update:model-value="
+                                                handleFamilyInformationInput(
+                                                    'parents_count',
+                                                    $event,
+                                                )
+                                            "
+                                            @blur="
+                                                validateFamilyInformationField(
+                                                    'parents_count',
+                                                    {
+                                                        requireRequiredFields: true,
+                                                    },
+                                                )
+                                            "
+                                        />
+                                    </div>
+                                </div>
 
                                 <AppTextArea
                                     :model-value="form.client.notes"

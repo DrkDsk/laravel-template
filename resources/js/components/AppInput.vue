@@ -56,10 +56,7 @@ const inputClass = () =>
             :aria-invalid="Boolean(props.error)"
             :class="inputClass()"
         />
-        <span
-            v-if="props.error"
-            class="text-red-600 dark:text-red-300 text-xs"
-        >
+        <span v-if="props.error" class="text-xs text-red-600 dark:text-red-300">
             {{ props.error }}
         </span>
         <span v-else-if="props.helper" class="text-sm text-text-secondary">

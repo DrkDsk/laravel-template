@@ -9,6 +9,7 @@ const props = defineProps<{
     helper?: string;
     error?: string;
     disabled?: boolean;
+    required?: boolean;
     class?: HTMLAttributes['class'];
 }>();
 
@@ -26,14 +27,16 @@ const selectClass = () =>
 
 <template>
     <label class="grid gap-2">
-        <span v-if="props.label" class="text-sm font-medium text-text-primary">
-            {{ props.label }}
+        <span v-if="props.label" class="ui-label text-sm font-medium">
+            {{ props.label
+            }}<span v-if="props.required" class="text-danger-500"> *</span>
         </span>
         <select
             v-if="model !== undefined"
             v-bind="$attrs"
             v-model="model"
             :disabled="props.disabled"
+            :required="props.required"
             :aria-invalid="Boolean(props.error)"
             :class="selectClass()"
         >
@@ -43,12 +46,16 @@ const selectClass = () =>
             v-else
             v-bind="$attrs"
             :disabled="props.disabled"
+            :required="props.required"
             :aria-invalid="Boolean(props.error)"
             :class="selectClass()"
         >
             <slot />
         </select>
-        <span v-if="props.error" class="text-sm font-medium text-danger">
+        <span
+            v-if="props.error"
+            class="text-danger-600 dark:text-danger-300 text-xs"
+        >
             {{ props.error }}
         </span>
         <span v-else-if="props.helper" class="text-sm text-text-secondary">
