@@ -531,7 +531,8 @@ const handleManualInput = (
         clientField === 'unemployment_assistance_discounted_weeks'
     ) {
         validateClientField(clientField);
-        return;
+
+        return ;
     }
 
     clearStepError(clientField);
