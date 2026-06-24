@@ -19,10 +19,21 @@ export interface CalculateFamilyInformationForm {
     parents_count: string;
 }
 
+export type RegimePeriod = {
+    id?: string | number;
+    regime_type: 'modalidad_10' | 'modalidad_40' | 'custom';
+    regime_name: string;
+    contribution_start_date: string | null;
+    contribution_end_date: string | null;
+    time: number;
+    is_fixed: boolean;
+};
+
 export interface CalculateFormData {
     client_id: number | null;
     client: CalculateClientForm;
     family_information: CalculateFamilyInformationForm;
+    regime_periods: RegimePeriod[];
 }
 
 export type CalculateForm = InertiaForm<CalculateFormData>;
@@ -58,7 +69,17 @@ export type FamilyInformationField =
     | 'minor_or_student_children_count'
     | 'parents_count';
 
-export type StepErrors = Record<ClientStepField, string>;
+export type RegimePeriodField =
+    | 'regime_type'
+    | 'regime_name'
+    | 'contribution_start_date'
+    | 'contribution_end_date';
+
+export type RegimePeriodErrors = Partial<Record<RegimePeriodField, string>>;
+
+export type StepErrors = Record<ClientStepField, string> & {
+    regime_periods: RegimePeriodErrors[];
+};
 
 export interface CalculateStep {
     id: number;

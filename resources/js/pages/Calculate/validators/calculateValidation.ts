@@ -53,7 +53,7 @@ export const validateCalculateStep = (
     }
 
     if (step === 2) {
-        return validateRegimePeriods();
+        return validateRegimePeriods(form, stepErrors);
     }
 
     return true;

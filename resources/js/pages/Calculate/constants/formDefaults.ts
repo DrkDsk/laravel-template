@@ -1,5 +1,16 @@
 import type { Client } from '@/models/client';
-import type { CalculateFormData } from '../types/calculate';
+import type { CalculateFormData, RegimePeriod } from '../types/calculate';
+import { BASE_REGIME_TYPES } from './regimeTypes';
+
+export const createBaseRegimePeriods = (): RegimePeriod[] =>
+    BASE_REGIME_TYPES.map((regimeType) => ({
+        regime_type: regimeType.value,
+        regime_name: regimeType.label,
+        contribution_start_date: null,
+        contribution_end_date: null,
+        time: 0,
+        is_fixed: true,
+    }));
 
 export const createCalculateFormDefaults = (
     selectedClient: Client | null,
@@ -22,4 +33,5 @@ export const createCalculateFormDefaults = (
         minor_or_student_children_count: '',
         parents_count: '',
     },
+    regime_periods: createBaseRegimePeriods(),
 });

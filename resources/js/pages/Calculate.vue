@@ -77,6 +77,8 @@ const validateCurrentStep = (step: number) =>
         enableManualMode,
     );
 
+const validateRegimePeriodsStep = () => validateCurrentStep(2);
+
 const {
     currentStep,
     progressWidth,
@@ -152,7 +154,12 @@ const validateFamilyInformationField = (
                             "
                         />
 
-                        <StepRegimePeriods v-else-if="currentStep === 2" />
+                        <StepRegimePeriods
+                            v-else-if="currentStep === 2"
+                            :form="form"
+                            :step-errors="stepErrors"
+                            :validate-regime-periods="validateRegimePeriodsStep"
+                        />
                         <StepBeneficiaries v-else-if="currentStep === 3" />
                         <StepSummary v-else-if="currentStep === 4" />
                     </section>
