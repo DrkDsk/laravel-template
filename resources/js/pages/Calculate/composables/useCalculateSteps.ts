@@ -27,23 +27,21 @@ export const useCalculateSteps = ({
     };
 
     const goToNextStep = () => {
-        if (currentStep.value === 1) {
-            if (validateCurrentStep(currentStep.value)) {
-                currentStep.value = 2;
-            }
-
-            return;
-        }
-
         if (currentStep.value === steps.length) {
-            if (!validateCurrentStep(1)) {
-                currentStep.value = 1;
+            for (let step = 1; step < steps.length; step += 1) {
+                if (!validateCurrentStep(step)) {
+                    currentStep.value = step;
 
-                return;
+                    return;
+                }
             }
 
             submitCalculate();
 
+            return;
+        }
+
+        if (!validateCurrentStep(currentStep.value)) {
             return;
         }
 

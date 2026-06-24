@@ -25,6 +25,7 @@ export const createStepErrors = () =>
         has_spouse: '',
         minor_or_student_children_count: '',
         parents_count: '',
+        regime_periods: [],
     });
 
 export const useCalculateForm = (selectedClient: Client | null) => {
@@ -39,6 +40,12 @@ export const useCalculateForm = (selectedClient: Client | null) => {
 
     const clearStepErrors = () => {
         Object.keys(stepErrors).forEach((field) => {
+            if (field === 'regime_periods') {
+                stepErrors.regime_periods = [];
+
+                return;
+            }
+
             stepErrors[field as ClientStepField] = '';
         });
     };
