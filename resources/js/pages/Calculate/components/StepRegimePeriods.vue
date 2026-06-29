@@ -58,6 +58,23 @@ const updateRegimeName = (
     props.validateRegimePeriods();
 };
 
+const updateUMA = (index: number, value: string | number | undefined) => {
+    updateRegimePeriodField(index, 'uma_value_year', value ? Number(value) : 0);
+    props.validateRegimePeriods();
+};
+
+const updateIntegratedBalance = (
+    index: number,
+    value: string | number | undefined,
+) => {
+    updateRegimePeriodField(
+        index,
+        'integrated_balance',
+        value ? Number(value) : 0,
+    );
+    props.validateRegimePeriods();
+};
+
 const updateContributionDate = (
     index: number,
     field: 'contribution_start_date' | 'contribution_end_date',
@@ -102,6 +119,13 @@ const updateContributionDate = (
                         >
                             Tiempo
                         </th>
+
+                        <th
+                            class="w-32 px-4 py-3 text-xs font-semibold tracking-[0.18em] text-slate-500 uppercase dark:text-slate-400"
+                        >
+                            UMA
+                        </th>
+
                         <th class="w-16 px-4 py-3">
                             <span class="sr-only">Acciones</span>
                         </th>
@@ -201,6 +225,38 @@ const updateContributionDate = (
                                     {{ formatTime(period.time) }}
                                 </div>
                             </div>
+                        </td>
+
+                        <td class="min-w-56 px-4 py-4">
+                            <AppInput
+                                v-if="period.is_fixed"
+                                :model-value="period.uma_value_year ?? 0"
+                                label="Valor"
+                                placeholder="113.14"
+                                maxlength="100"
+                                :error="periodError(index, 'uma_value_year')"
+                                required
+                                @update:model-value="updateUMA(index, $event)"
+                                @blur="validateRegimePeriods"
+                            />
+                        </td>
+
+                        <td class="min-w-56 px-4 py-4">
+                            <AppInput
+                                v-if="!period.is_fixed"
+                                :model-value="period.integrated_balance ?? 0"
+                                label="Saldo Integrado"
+                                placeholder="230.85"
+                                maxlength="100"
+                                :error="
+                                    periodError(index, 'integrated_balance')
+                                "
+                                required
+                                @update:model-value="
+                                    updateIntegratedBalance(index, $event)
+                                "
+                                @blur="validateRegimePeriods"
+                            />
                         </td>
 
                         <td class="px-4 py-10 text-right">

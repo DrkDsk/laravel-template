@@ -90,6 +90,8 @@ const createDynamicRegimePeriod = (): RegimePeriod => ({
     contribution_start_date: null,
     contribution_end_date: null,
     time: 0,
+    uma_value_year : null,
+    integrated_balance : null,
     is_fixed: false,
 });
 

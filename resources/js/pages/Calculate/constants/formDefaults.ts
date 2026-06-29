@@ -8,7 +8,9 @@ export const createBaseRegimePeriods = (): RegimePeriod[] =>
         regime_name: regimeType.label,
         contribution_start_date: null,
         contribution_end_date: null,
+        uma_value_year : 0,
         time: 0,
+        integrated_balance : 0,
         is_fixed: true,
     }));
 
